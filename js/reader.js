@@ -7,8 +7,13 @@ class NovelReader {
     this.chapterData = null;
     this.settings = Settings.get();
     this.isMobile = window.innerWidth <= 768;
-    this.totalChars = 0; // 全体の文字数
-    this.chapterChars = []; // 各章の文字数
+    this.totalChars = 0;
+    this.chapterChars = [];
+    
+    // 読書速度計測用
+    this.lastPageTurnTime = null;
+    this.pageTurnIntervals = [];
+    this.currentPageChars = 0;
     
     this.elements = {
       book: document.getElementById('book'),
@@ -29,6 +34,73 @@ class NovelReader {
     };
     
     this.touchStartX = 0;
+  }
+
+  // ページめくり時間を記録して読書速度を計算
+  recordPageTurn() {
+    const now = Date.now();
+    
+    if (this.lastPageTurnTime && this.currentPageChars > 0) {
+      const interval = (now - this.lastPageTurnTime) / 1000; // 秒
+      
+      // 2秒〜5分の間のみ有効（極端な値を除外）
+      if (interval >= 2 && interval <= 300) {
+        const charsPerMinute = (this.currentPageChars / interval) * 60;
+        
+        this.pageTurnIntervals.push({
+          chars: this.currentPageChars,
+          seconds: interval,
+          speed: charsPerMinute
+        });
+        
+        // 最新20回分のみ保持
+        if (this.pageTurnIntervals.length > 20) {
+          this.pageTurnIntervals.shift();
+        }
+        
+        // 平均読書速度を計算して保存
+        this.updateReadingSpeed();
+      }
+    }
+    
+    this.lastPageTurnTime = now;
+  }
+
+  updateReadingSpeed() {
+    if (this.pageTurnIntervals.length < 3) return; // 最低3回分のデータが必要
+    
+    // 中央値を使用（外れ値の影響を減らす）
+    const speeds = this.pageTurnIntervals.map(p => p.speed).sort((a, b) => a - b);
+    const mid = Math.floor(speeds.length / 2);
+    const medianSpeed = speeds.length % 2 === 0 
+      ? (speeds[mid - 1] + speeds[mid]) / 2 
+      : speeds[mid];
+    
+    // 100〜2000文字/分の範囲に制限
+    const clampedSpeed = Math.max(100, Math.min(2000, Math.round(medianSpeed)));
+    
+    this.settings.readingSpeed = clampedSpeed;
+    Settings.update('readingSpeed', clampedSpeed);
+  }
+
+  // 現在表示中のページの文字数を計算
+  calculateCurrentPageChars() {
+    if (!this.pages.length) return 0;
+    
+    const getTextContent = (html) => {
+      const div = document.createElement('div');
+      div.innerHTML = html;
+      return div.textContent.length;
+    };
+    
+    if (this.isMobile) {
+      return getTextContent(this.pages[this.currentSpread] || '');
+    } else {
+      const spreadIndex = this.currentSpread * 2;
+      const leftChars = getTextContent(this.pages[spreadIndex] || '');
+      const rightChars = getTextContent(this.pages[spreadIndex + 1] || '');
+      return leftChars + rightChars;
+    }
   }
 
   showLoading(text = '読み込み中...') { 
@@ -331,6 +403,9 @@ class NovelReader {
       Settings.saveProgress(this.novel?.id, this.currentChapter, spreadIndex);
     }
     
+    // 現在のページの文字数を記録
+    this.currentPageChars = this.calculateCurrentPageChars();
+    
     this.updateRemainingTime();
   }
 
@@ -367,12 +442,20 @@ class NovelReader {
     // 残り時間を計算
     const remainingMinutes = Math.ceil(remainingChars / readingSpeed);
     
+    let timeText;
     if (remainingMinutes < 60) {
-      this.elements.remainingTime.textContent = `残り約${remainingMinutes}分`;
+      timeText = `残り約${remainingMinutes}分`;
     } else {
       const hours = Math.floor(remainingMinutes / 60);
       const mins = remainingMinutes % 60;
-      this.elements.remainingTime.textContent = `残り約${hours}時間${mins > 0 ? mins + '分' : ''}`;
+      timeText = `残り約${hours}時間${mins > 0 ? mins + '分' : ''}`;
+    }
+    
+    // 読書速度が計測されている場合は表示
+    if (this.pageTurnIntervals.length >= 3) {
+      this.elements.remainingTime.textContent = `${timeText} (${readingSpeed}字/分)`;
+    } else {
+      this.elements.remainingTime.textContent = timeText;
     }
   }
 
@@ -392,18 +475,24 @@ class NovelReader {
 
   nextPage() {
     if (this.currentSpread < this.getMaxSpread()) {
+      this.recordPageTurn();
       this.currentSpread++;
+      this.currentPageChars = this.calculateCurrentPageChars();
       this.renderSpread();
     } else if (this.currentChapter < this.novel.chapters.length - 1) {
+      this.recordPageTurn();
       this.goToChapter(this.currentChapter + 1, 0);
     }
   }
 
   prevPage() {
     if (this.currentSpread > 0) {
+      this.recordPageTurn();
       this.currentSpread--;
+      this.currentPageChars = this.calculateCurrentPageChars();
       this.renderSpread();
     } else if (this.currentChapter > 0) {
+      this.recordPageTurn();
       this.goToChapter(this.currentChapter - 1, 9999);
     }
   }
