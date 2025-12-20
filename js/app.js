@@ -162,4 +162,26 @@ document.addEventListener('DOMContentLoaded', () => {
   // スワイプ
   content.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
   content.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
+
+  // マウスホイール
+  content.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const isVertical = reader.settings.readingMode === 'vertical';
+    
+    if (isVertical) {
+      // 縦書き: 下スクロールで次ページ（左へ）、上スクロールで前ページ（右へ）
+      if (e.deltaY > 0 || e.deltaX < 0) {
+        reader.nextPage();
+      } else if (e.deltaY < 0 || e.deltaX > 0) {
+        reader.prevPage();
+      }
+    } else {
+      // 横書き: 通常のスクロール
+      if (e.deltaY > 0) {
+        reader.nextPage();
+      } else if (e.deltaY < 0) {
+        reader.prevPage();
+      }
+    }
+  }, { passive: false });
 });

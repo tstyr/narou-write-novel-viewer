@@ -10,6 +10,7 @@ class NovelReader {
       title: document.getElementById('novel-title'),
       toc: document.getElementById('toc'),
       novelInfo: document.getElementById('novel-info'),
+      chapterInfo: document.getElementById('chapter-info'),
       currentPage: document.getElementById('current-page'),
       totalPages: document.getElementById('total-pages'),
       loading: document.getElementById('loading')
@@ -72,7 +73,7 @@ class NovelReader {
         currentSection = ch.section;
         html += `<div class="toc-section">${this.escapeHtml(currentSection)}</div>`;
       }
-      html += `<a href="#" data-chapter="${i}">${ch.number}. ${this.escapeHtml(ch.title)}</a>`;
+      html += `<a href="#" data-chapter="${i}">${this.escapeHtml(ch.title)}</a>`;
     });
     this.elements.toc.innerHTML = html;
   }
@@ -109,6 +110,7 @@ class NovelReader {
       document.getElementById('next-chapter')?.addEventListener('click', () => this.goToChapter(index + 1));
       
       this.updateTocActive();
+      this.updateChapterInfo();
       this.updatePageIndicator();
       Settings.saveProgress(this.novel.id, index, 0);
       
@@ -120,6 +122,12 @@ class NovelReader {
     } finally {
       this.hideLoading();
     }
+  }
+
+  updateChapterInfo() {
+    if (!this.novel) return;
+    const chapter = this.novel.chapters[this.currentChapter];
+    this.elements.chapterInfo.textContent = `第${this.currentChapter + 1}話/${this.novel.chapters.length}話 | `;
   }
 
   updatePageIndicator() {

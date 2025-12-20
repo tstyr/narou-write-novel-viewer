@@ -279,11 +279,16 @@ body {
   transform: translateX(-50%);
   font-size: 0.7rem;
   color: var(--text-color);
-  opacity: 0.5;
+  opacity: 0.6;
   background: var(--bg-color);
-  padding: 0.15rem 0.5rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 8px;
   z-index: 5;
+  white-space: nowrap;
+}
+
+#chapter-info {
+  color: var(--accent-color);
 }
 
 /* 設定パネル */
