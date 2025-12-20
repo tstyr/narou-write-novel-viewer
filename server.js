@@ -5,7 +5,7 @@ const path = require('path');
 const url = require('url');
 const zlib = require('zlib');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const mimeTypes = {
   '.html': 'text/html',
@@ -317,7 +317,6 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`サーバー起動: http://localhost:${PORT}`);
-  console.log('なろうビューワーを開いてください');
 });
