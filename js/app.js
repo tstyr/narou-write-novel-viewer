@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const overlay = document.getElementById('overlay');
   const readingModeBtn = document.getElementById('reading-mode-btn');
   const themeBtn = document.getElementById('theme-btn');
-  const fullscreenBtn = document.getElementById('fullscreen-btn');
   const settingsBtn = document.getElementById('settings-btn');
   const settingsPanel = document.getElementById('settings-panel');
   const closeSettings = document.getElementById('close-settings');
@@ -17,18 +16,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const lineHeightInput = document.getElementById('line-height');
   const fontFamilySelect = document.getElementById('font-family');
   const toc = document.getElementById('toc');
-  const book = document.getElementById('book');
-  const header = document.getElementById('header');
   const novelUrl = document.getElementById('novel-url');
   const loadBtn = document.getElementById('load-btn');
   const navPrev = document.getElementById('nav-prev');
   const navNext = document.getElementById('nav-next');
-  const app = document.getElementById('app');
+  const content = document.getElementById('content');
 
   let settings = Settings.get();
-  let headerTimeout;
   
-  // 初期設定適用
+  // 初期設定
   applyTheme(settings.theme);
   updateReadingModeBtn(settings.readingMode);
   fontSizeDisplay.textContent = `${settings.fontSize}px`;
@@ -36,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
   fontFamilySelect.value = settings.fontFamily;
   reader.applySettings();
 
-  // 小説読み込み
+  // 読み込み
   loadBtn.addEventListener('click', () => {
     if (novelUrl.value.trim()) reader.loadFromNarou(novelUrl.value);
   });
@@ -79,7 +75,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateReadingModeBtn(mode) {
     readingModeBtn.textContent = mode === 'vertical' ? '横' : '縦';
-    readingModeBtn.title = mode === 'vertical' ? '横書きに切替' : '縦書きに切替';
   }
 
   // テーマ
@@ -95,51 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     themeBtn.textContent = Settings.getThemeIcon(theme);
   }
 
-  // 全画面
-  fullscreenBtn.addEventListener('click', toggleFullscreen);
-  
-  function toggleFullscreen() {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-      const elem = document.documentElement;
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen();
-      } else if (elem.webkitRequestFullscreen) {
-        elem.webkitRequestFullscreen();
-      }
-      app.classList.add('fullscreen');
-      fullscreenBtn.textContent = '⛶';
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      }
-      app.classList.remove('fullscreen');
-      fullscreenBtn.textContent = '⛶';
-    }
-  }
-
-  document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement) {
-      app.classList.remove('fullscreen');
-    }
-  });
-
-  // 全画面時のヘッダー表示
-  document.addEventListener('mousemove', (e) => {
-    if (app.classList.contains('fullscreen')) {
-      if (e.clientY < 60) {
-        header.classList.add('show-header');
-        clearTimeout(headerTimeout);
-      } else {
-        headerTimeout = setTimeout(() => {
-          header.classList.remove('show-header');
-        }, 2000);
-      }
-    }
-  });
-
-  // 設定パネル
+  // 設定
   settingsBtn.addEventListener('click', () => {
     settingsPanel.classList.add('visible');
     overlay.classList.remove('hidden');
@@ -159,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fontSizeDisplay.textContent = `${newSize}px`;
   });
   fontIncrease.addEventListener('click', () => {
-    const newSize = Math.min(28, reader.settings.fontSize + 2);
+    const newSize = Math.min(32, reader.settings.fontSize + 2);
     reader.setFontSize(newSize);
     fontSizeDisplay.textContent = `${newSize}px`;
   });
@@ -174,14 +125,12 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.setFontFamily(e.target.value);
   });
 
-  // ページナビ（タップ）
+  // タップナビ
   navPrev.addEventListener('click', () => {
-    const isVertical = reader.settings.readingMode === 'vertical';
-    isVertical ? reader.nextPage() : reader.prevPage();
+    reader.settings.readingMode === 'vertical' ? reader.nextPage() : reader.prevPage();
   });
   navNext.addEventListener('click', () => {
-    const isVertical = reader.settings.readingMode === 'vertical';
-    isVertical ? reader.prevPage() : reader.nextPage();
+    reader.settings.readingMode === 'vertical' ? reader.prevPage() : reader.nextPage();
   });
 
   // キーボード
@@ -207,41 +156,10 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         reader.prevPage();
         break;
-      case 'f':
-      case 'F':
-        toggleFullscreen();
-        break;
-      case 'Escape':
-        if (app.classList.contains('fullscreen')) {
-          app.classList.remove('fullscreen');
-        }
-        break;
     }
   });
 
-  // タッチ（スワイプ）
-  book.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
-  book.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
-
-  // ダブルタップで全画面（スマホ用）
-  let lastTap = 0;
-  book.addEventListener('touchend', (e) => {
-    const now = Date.now();
-    if (now - lastTap < 300) {
-      toggleFullscreen();
-    }
-    lastTap = now;
-  });
-
-  // リサイズ
-  let resizeTimer;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => reader.onResize(), 200);
-  });
-
-  // 画面回転
-  window.addEventListener('orientationchange', () => {
-    setTimeout(() => reader.onResize(), 300);
-  });
+  // スワイプ
+  content.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
+  content.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
 });

@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="mobile-web-app-capable" content="yes">
   <title>小説ビューワー</title>
   <link rel="stylesheet" href="css/style.css">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -13,7 +12,7 @@
   <div id="app">
     <header id="header">
       <div class="header-left">
-        <button id="menu-btn" class="icon-btn" title="目次">☰</button>
+        <button id="menu-btn" class="icon-btn">☰</button>
         <h1 id="novel-title">小説ビューワー</h1>
       </div>
       <div class="header-center">
@@ -21,10 +20,9 @@
         <button id="load-btn" class="icon-btn">読込</button>
       </div>
       <div class="header-right">
-        <button id="reading-mode-btn" class="icon-btn" title="縦書き/横書き">横</button>
-        <button id="theme-btn" class="icon-btn" title="テーマ">🌙</button>
-        <button id="fullscreen-btn" class="icon-btn" title="全画面">⛶</button>
-        <button id="settings-btn" class="icon-btn" title="設定">⚙</button>
+        <button id="reading-mode-btn" class="icon-btn">横</button>
+        <button id="theme-btn" class="icon-btn">☀️</button>
+        <button id="settings-btn" class="icon-btn">⚙</button>
       </div>
     </header>
 
@@ -37,33 +35,26 @@
       <nav id="toc"></nav>
     </aside>
 
-    <div id="book-container">
-      <div id="book" class="spread-view vertical-mode">
-        <div class="page" id="page-left">
-          <div class="page-content" id="content-left">
-            <div id="welcome">
-              <h2>小説家になろうビューワー</h2>
-              <p>URLまたはncodeを入力して「読込」</p>
-              <div class="examples">
-                <p>例:</p>
-                <ul>
-                  <li>n9669bk</li>
-                  <li>https://ncode.syosetu.com/n9669bk/</li>
-                </ul>
-              </div>
+    <main id="reader-container">
+      <div id="reader" class="vertical-mode">
+        <div id="content">
+          <div id="welcome">
+            <h2>小説家になろうビューワー</h2>
+            <p>URLまたはncodeを入力して「読込」</p>
+            <div class="examples">
+              <p>例:</p>
+              <ul>
+                <li>n9669bk</li>
+                <li>https://ncode.syosetu.com/n9669bk/</li>
+              </ul>
             </div>
           </div>
-          <div class="page-number" id="page-num-left"></div>
         </div>
-        <div class="page" id="page-right">
-          <div class="page-content" id="content-right"></div>
-          <div class="page-number" id="page-num-right"></div>
-        </div>
-        <div class="nav-area prev" id="nav-prev"></div>
-        <div class="nav-area next" id="nav-next"></div>
       </div>
-      <div id="page-indicator"><span id="current-page">1</span> / <span id="total-pages">1</span></div>
-    </div>
+      <div class="nav-area prev" id="nav-prev"></div>
+      <div class="nav-area next" id="nav-next"></div>
+      <div id="page-indicator"><span id="current-page">-</span> / <span id="total-pages">-</span></div>
+    </main>
 
     <div id="settings-panel">
       <div class="settings-content">
