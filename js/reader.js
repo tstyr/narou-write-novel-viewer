@@ -3,13 +3,15 @@ class NovelReader {
     this.novel = null;
     this.currentChapter = 0;
     this.pages = [];
-    this.currentPage = 0;
+    this.currentSpread = 0; // 見開きのインデックス
     this.chapterData = null;
     this.settings = Settings.get();
+    this.isMobile = window.innerWidth <= 768;
     
     this.elements = {
-      page: document.getElementById('page'),
-      pageContent: document.getElementById('page-content'),
+      book: document.getElementById('book'),
+      contentLeft: document.getElementById('content-left'),
+      contentRight: document.getElementById('content-right'),
       title: document.getElementById('novel-title'),
       toc: document.getElementById('toc'),
       novelInfo: document.getElementById('novel-info'),
@@ -92,12 +94,20 @@ class NovelReader {
       
       this.chapterData = await res.json();
       this.paginate();
-      this.currentPage = Math.min(startPage, this.pages.length - 1);
-      this.renderPage();
+      
+      // startPageから見開きを計算
+      if (this.isMobile) {
+        this.currentSpread = Math.min(startPage, this.pages.length - 1);
+      } else {
+        this.currentSpread = Math.floor(Math.min(startPage, this.pages.length - 1) / 2);
+      }
+      
+      this.renderSpread();
       this.updateTocActive();
       this.updateChapterInfo();
     } catch (e) {
-      this.elements.pageContent.innerHTML = `<p>読み込み失敗: ${e.message}</p>`;
+      this.elements.contentLeft.innerHTML = `<p>読み込み失敗: ${e.message}</p>`;
+      this.elements.contentRight.innerHTML = '';
       this.pages = [];
     } finally {
       this.hideLoading();
@@ -108,21 +118,20 @@ class NovelReader {
     this.pages = [];
     if (!this.chapterData) return;
 
-    const content = this.elements.pageContent;
     const isVertical = this.settings.readingMode === 'vertical';
     
-    // 一時的にコンテンツを設定してサイズを計測
+    // ページサイズを取得（1ページ分）
+    const pageEl = document.getElementById('page-left');
+    const pageWidth = pageEl.clientWidth - 48; // padding分を引く
+    const pageHeight = pageEl.clientHeight - 48;
+    
+    // 全コンテンツ
     const allContent = [
       `<h2 class="chapter-title">${this.escapeHtml(this.chapterData.title)}</h2>`,
       ...this.chapterData.content.map(p => `<p>${this.escapeHtml(p)}</p>`)
     ];
     
-    // ページサイズを取得
-    const pageWidth = content.clientWidth;
-    const pageHeight = content.clientHeight;
-    
-    // 各段落を1つずつ追加してページを構築
-    let currentPageContent = [];
+    // テスト用div
     let testDiv = document.createElement('div');
     testDiv.style.cssText = `
       position: absolute;
@@ -137,6 +146,8 @@ class NovelReader {
     `;
     document.body.appendChild(testDiv);
     
+    let currentPageContent = [];
+    
     for (let i = 0; i < allContent.length; i++) {
       currentPageContent.push(allContent[i]);
       testDiv.innerHTML = currentPageContent.join('');
@@ -146,14 +157,12 @@ class NovelReader {
         : testDiv.scrollHeight > pageHeight;
       
       if (overflow && currentPageContent.length > 1) {
-        // 最後の要素を除いてページを確定
         currentPageContent.pop();
         this.pages.push(currentPageContent.join(''));
         currentPageContent = [allContent[i]];
       }
     }
     
-    // 残りをページに追加
     if (currentPageContent.length > 0) {
       this.pages.push(currentPageContent.join(''));
     }
@@ -165,14 +174,44 @@ class NovelReader {
     }
   }
 
-  renderPage() {
+  renderSpread() {
     if (this.pages.length === 0) return;
     
-    this.elements.pageContent.innerHTML = this.pages[this.currentPage];
-    this.elements.currentPageEl.textContent = this.currentPage + 1;
-    this.elements.totalPagesEl.textContent = this.pages.length;
+    const isVertical = this.settings.readingMode === 'vertical';
     
-    Settings.saveProgress(this.novel?.id, this.currentChapter, this.currentPage);
+    if (this.isMobile) {
+      // スマホ: 1ページ表示
+      this.elements.contentLeft.innerHTML = this.pages[this.currentSpread] || '';
+      this.elements.contentRight.innerHTML = '';
+      
+      this.elements.currentPageEl.textContent = this.currentSpread + 1;
+      this.elements.totalPagesEl.textContent = this.pages.length;
+      
+      Settings.saveProgress(this.novel?.id, this.currentChapter, this.currentSpread);
+    } else {
+      // PC: 見開き2ページ
+      // 縦書き: 右→左の順（右が先）
+      // 横書き: 左→右の順（左が先）
+      const spreadIndex = this.currentSpread * 2;
+      
+      if (isVertical) {
+        // 縦書き: 右ページが先、左ページが後
+        this.elements.contentRight.innerHTML = this.pages[spreadIndex] || '';
+        this.elements.contentLeft.innerHTML = this.pages[spreadIndex + 1] || '';
+      } else {
+        // 横書き: 左ページが先、右ページが後
+        this.elements.contentLeft.innerHTML = this.pages[spreadIndex] || '';
+        this.elements.contentRight.innerHTML = this.pages[spreadIndex + 1] || '';
+      }
+      
+      // ページ番号表示
+      const displayPage = spreadIndex + 1;
+      const totalSpreads = Math.ceil(this.pages.length / 2);
+      this.elements.currentPageEl.textContent = `${displayPage}-${Math.min(displayPage + 1, this.pages.length)}`;
+      this.elements.totalPagesEl.textContent = this.pages.length;
+      
+      Settings.saveProgress(this.novel?.id, this.currentChapter, spreadIndex);
+    }
   }
 
   updateChapterInfo() {
@@ -186,22 +225,28 @@ class NovelReader {
     });
   }
 
+  getMaxSpread() {
+    if (this.isMobile) {
+      return this.pages.length - 1;
+    } else {
+      return Math.ceil(this.pages.length / 2) - 1;
+    }
+  }
+
   nextPage() {
-    if (this.currentPage < this.pages.length - 1) {
-      this.currentPage++;
-      this.renderPage();
+    if (this.currentSpread < this.getMaxSpread()) {
+      this.currentSpread++;
+      this.renderSpread();
     } else if (this.currentChapter < this.novel.chapters.length - 1) {
-      // 次の章へ
       this.goToChapter(this.currentChapter + 1, 0);
     }
   }
 
   prevPage() {
-    if (this.currentPage > 0) {
-      this.currentPage--;
-      this.renderPage();
+    if (this.currentSpread > 0) {
+      this.currentSpread--;
+      this.renderSpread();
     } else if (this.currentChapter > 0) {
-      // 前の章の最後のページへ
       this.goToChapter(this.currentChapter - 1, 9999);
     }
   }
@@ -209,58 +254,60 @@ class NovelReader {
   setReadingMode(mode) {
     this.settings.readingMode = mode;
     Settings.update('readingMode', mode);
-    this.elements.page.classList.remove('vertical-mode', 'horizontal-mode');
-    this.elements.page.classList.add(`${mode}-mode`);
+    this.elements.book.classList.remove('vertical-mode', 'horizontal-mode');
+    this.elements.book.classList.add(`${mode}-mode`);
     
     if (this.chapterData) {
       this.paginate();
-      this.currentPage = 0;
-      this.renderPage();
+      this.currentSpread = 0;
+      this.renderSpread();
     }
   }
 
   setFontSize(size) {
     this.settings.fontSize = size;
     Settings.update('fontSize', size);
-    this.elements.pageContent.style.fontSize = `${size}px`;
+    document.querySelectorAll('.page-content').forEach(el => el.style.fontSize = `${size}px`);
     
     if (this.chapterData) {
       this.paginate();
-      this.currentPage = 0;
-      this.renderPage();
+      this.currentSpread = 0;
+      this.renderSpread();
     }
   }
 
   setLineHeight(height) {
     this.settings.lineHeight = height;
     Settings.update('lineHeight', height);
-    this.elements.pageContent.style.lineHeight = height;
+    document.querySelectorAll('.page-content').forEach(el => el.style.lineHeight = height);
     
     if (this.chapterData) {
       this.paginate();
-      this.currentPage = 0;
-      this.renderPage();
+      this.currentSpread = 0;
+      this.renderSpread();
     }
   }
 
   setFontFamily(family) {
     this.settings.fontFamily = family;
     Settings.update('fontFamily', family);
-    this.elements.pageContent.style.fontFamily = family;
+    document.querySelectorAll('.page-content').forEach(el => el.style.fontFamily = family);
     
     if (this.chapterData) {
       this.paginate();
-      this.currentPage = 0;
-      this.renderPage();
+      this.currentSpread = 0;
+      this.renderSpread();
     }
   }
 
   applySettings() {
-    this.elements.pageContent.style.fontSize = `${this.settings.fontSize}px`;
-    this.elements.pageContent.style.lineHeight = this.settings.lineHeight;
-    this.elements.pageContent.style.fontFamily = this.settings.fontFamily;
-    this.elements.page.classList.remove('vertical-mode', 'horizontal-mode');
-    this.elements.page.classList.add(`${this.settings.readingMode}-mode`);
+    document.querySelectorAll('.page-content').forEach(el => {
+      el.style.fontSize = `${this.settings.fontSize}px`;
+      el.style.lineHeight = this.settings.lineHeight;
+      el.style.fontFamily = this.settings.fontFamily;
+    });
+    this.elements.book.classList.remove('vertical-mode', 'horizontal-mode');
+    this.elements.book.classList.add(`${this.settings.readingMode}-mode`);
   }
 
   handleTouchStart(e) {
@@ -277,6 +324,27 @@ class NovelReader {
       } else {
         isVertical ? this.prevPage() : this.nextPage();
       }
+    }
+  }
+
+  onResize() {
+    const wasMobile = this.isMobile;
+    this.isMobile = window.innerWidth <= 768;
+    
+    if (this.chapterData) {
+      // 現在のページ位置を保持
+      const currentPageIndex = wasMobile ? this.currentSpread : this.currentSpread * 2;
+      
+      this.paginate();
+      
+      // 新しいモードでの見開きを計算
+      if (this.isMobile) {
+        this.currentSpread = Math.min(currentPageIndex, this.pages.length - 1);
+      } else {
+        this.currentSpread = Math.floor(Math.min(currentPageIndex, this.pages.length - 1) / 2);
+      }
+      
+      this.renderSpread();
     }
   }
 

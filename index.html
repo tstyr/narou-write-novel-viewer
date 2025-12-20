@@ -35,27 +35,34 @@
       <nav id="toc"></nav>
     </aside>
 
-    <main id="page-container">
-      <div id="page" class="vertical-mode">
-        <div id="page-content">
-          <div id="welcome">
-            <h2>小説家になろうビューワー</h2>
-            <p>URLまたはncodeを入力して「読込」</p>
-            <div class="examples">
-              <p>例:</p>
-              <ul>
-                <li>n9669bk</li>
-                <li>https://ncode.syosetu.com/n9669bk/</li>
-              </ul>
+    <main id="book-container">
+      <div id="book" class="vertical-mode">
+        <div class="page" id="page-left">
+          <div class="page-content" id="content-left">
+            <div id="welcome">
+              <h2>小説家になろうビューワー</h2>
+              <p>URLまたはncodeを入力して「読込」</p>
+              <div class="examples">
+                <p>例:</p>
+                <ul>
+                  <li>n9669bk</li>
+                  <li>https://ncode.syosetu.com/n9669bk/</li>
+                </ul>
+              </div>
             </div>
           </div>
+        </div>
+        <div class="page" id="page-right">
+          <div class="page-content" id="content-right"></div>
         </div>
         <div class="tap-area prev" id="tap-prev"></div>
         <div class="tap-area next" id="tap-next"></div>
       </div>
       <div id="page-info">
+        <button id="prev-chapter" class="chapter-nav-btn">前の話</button>
         <span id="chapter-info"></span>
         <span id="current-page">-</span> / <span id="total-pages">-</span>
+        <button id="next-chapter" class="chapter-nav-btn">次の話</button>
       </div>
     </main>
 

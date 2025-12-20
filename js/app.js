@@ -179,11 +179,27 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => {
-      if (reader.chapterData) {
-        reader.paginate();
-        reader.currentPage = Math.min(reader.currentPage, reader.pages.length - 1);
-        reader.renderPage();
-      }
+      reader.onResize();
     }, 300);
   });
+
+  // 前の話・次の話ボタン
+  const prevChapterBtn = document.getElementById('prev-chapter');
+  const nextChapterBtn = document.getElementById('next-chapter');
+  
+  if (prevChapterBtn) {
+    prevChapterBtn.addEventListener('click', () => {
+      if (reader.novel && reader.currentChapter > 0) {
+        reader.goToChapter(reader.currentChapter - 1, 0);
+      }
+    });
+  }
+  
+  if (nextChapterBtn) {
+    nextChapterBtn.addEventListener('click', () => {
+      if (reader.novel && reader.currentChapter < reader.novel.chapters.length - 1) {
+        reader.goToChapter(reader.currentChapter + 1, 0);
+      }
+    });
+  }
 });
