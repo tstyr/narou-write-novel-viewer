@@ -1,0 +1,522 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-color: #f5f1e8;
+  --text-color: #333;
+  --header-bg: #fff;
+  --sidebar-bg: #fff;
+  --border-color: #ddd;
+  --accent-color: #4a90a4;
+  --shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* セピア（イエロー/黄ばみ）モード */
+[data-theme="sepia"] {
+  --bg-color: #f4ecd8;
+  --text-color: #5b4636;
+  --header-bg: #e8dcc8;
+  --sidebar-bg: #e8dcc8;
+  --border-color: #c9b99a;
+  --accent-color: #8b6914;
+}
+
+/* ホワイトモード */
+[data-theme="white"] {
+  --bg-color: #ffffff;
+  --text-color: #222;
+  --header-bg: #f8f8f8;
+  --sidebar-bg: #f8f8f8;
+  --border-color: #e0e0e0;
+  --accent-color: #4a90a4;
+}
+
+/* ダークモード */
+[data-theme="dark"] {
+  --bg-color: #1a1a1a;
+  --text-color: #e0e0e0;
+  --header-bg: #2d2d2d;
+  --sidebar-bg: #2d2d2d;
+  --border-color: #444;
+  --accent-color: #6ab0c4;
+}
+
+body {
+  font-family: 'Noto Serif JP', serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  min-height: 100vh;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ヘッダー */
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow);
+  z-index: 100;
+}
+
+.header-left, .header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+#novel-title {
+  font-size: 1rem;
+  font-weight: normal;
+  margin-left: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.icon-btn {
+  background: none;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  color: var(--text-color);
+  font-size: 1rem;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: var(--border-color);
+}
+
+.theme-cycle {
+  min-width: 40px;
+}
+
+/* サイドバー */
+#sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 320px;
+  height: 100vh;
+  background: var(--sidebar-bg);
+  box-shadow: var(--shadow);
+  z-index: 200;
+  transform: translateX(-100%);
+  transition: transform 0.3s;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#sidebar.visible {
+  transform: translateX(0);
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  position: sticky;
+  top: 0;
+  background: var(--sidebar-bg);
+}
+
+/* 小説情報 */
+#novel-info {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+#novel-info .info-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+#novel-info .info-author {
+  color: var(--accent-color);
+  margin-bottom: 0.5rem;
+}
+
+#novel-info .info-story {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+/* 目次 */
+#toc {
+  padding: 0.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.toc-section {
+  font-weight: bold;
+  padding: 0.75rem;
+  background: var(--border-color);
+  margin: 0.5rem 0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+#toc a {
+  display: block;
+  padding: 0.6rem 0.75rem;
+  color: var(--text-color);
+  text-decoration: none;
+  border-radius: 4px;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+  border-left: 3px solid transparent;
+}
+
+#toc a:hover {
+  background: var(--border-color);
+}
+
+#toc a.active {
+  background: var(--accent-color);
+  color: #fff;
+  border-left-color: var(--accent-color);
+}
+
+/* オーバーレイ */
+#overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  z-index: 150;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* リーダーコンテナ */
+#reader-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+#reader {
+  flex: 1;
+  padding: 2rem;
+  overflow: hidden;
+  position: relative;
+}
+
+#content {
+  max-width: 800px;
+  margin: 0 auto;
+  height: 100%;
+}
+
+/* 横書きモード */
+.horizontal-mode #content {
+  writing-mode: horizontal-tb;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* 縦書きモード */
+.vertical-mode #content {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  height: 100%;
+  max-width: none;
+  overflow-x: auto;
+}
+
+.vertical-mode #reader {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* テキストスタイル */
+#content p {
+  text-indent: 1em;
+  margin-bottom: 0.5em;
+  text-align: justify;
+}
+
+#content .chapter-title {
+  font-size: 1.5em;
+  font-weight: bold;
+  text-indent: 0;
+  margin: 1em 0;
+  text-align: center;
+}
+
+/* ページインジケーター */
+#page-indicator {
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+/* ナビゲーションボタン */
+.nav-btn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--header-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-color);
+  opacity: 0.5;
+  transition: opacity 0.2s;
+  z-index: 50;
+}
+
+.nav-btn:hover {
+  opacity: 1;
+}
+
+#prev-btn { left: 1rem; }
+#next-btn { right: 1rem; }
+
+/* 設定パネル */
+#settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 300px;
+  height: 100vh;
+  background: var(--sidebar-bg);
+  box-shadow: var(--shadow);
+  z-index: 200;
+  padding: 1rem;
+}
+
+.settings-content h3 {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.setting-item {
+  margin-bottom: 1.5rem;
+}
+
+.setting-item label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.font-size-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.font-size-controls button {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+  color: var(--text-color);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+input[type="range"] {
+  width: 100%;
+}
+
+select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+.btn {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 1rem;
+}
+
+/* ヘッダー中央（URL入力） */
+.header-center {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  max-width: 500px;
+  margin: 0 1rem;
+}
+
+#novel-url {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+}
+
+#novel-url:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}
+
+#load-btn {
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+}
+
+/* ウェルカム画面 */
+#welcome {
+  text-align: center;
+  padding: 3rem;
+}
+
+#welcome h2 {
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+}
+
+#welcome .examples {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: var(--header-bg);
+  border-radius: 8px;
+  display: inline-block;
+  text-align: left;
+}
+
+#welcome ul {
+  margin-left: 1.5rem;
+  margin-top: 0.5rem;
+}
+
+#welcome li {
+  font-family: monospace;
+  margin: 0.25rem 0;
+  color: var(--accent-color);
+}
+
+/* ローディング */
+#loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 300;
+  color: #fff;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #333;
+  border-top-color: var(--accent-color);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 章ナビゲーション */
+.chapter-nav {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem 0;
+  margin-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.chapter-nav button {
+  padding: 0.75rem 1.5rem;
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.chapter-nav button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* レスポンシブ */
+@media (max-width: 768px) {
+  #header {
+    flex-wrap: wrap;
+    padding: 0.5rem;
+  }
+  
+  .header-center {
+    order: 3;
+    max-width: 100%;
+    width: 100%;
+    margin: 0.5rem 0 0 0;
+  }
+  
+  #novel-title {
+    display: none;
+  }
+  
+  .nav-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
+  
+  #reader {
+    padding: 1rem;
+  }
+  
+  #settings-panel, #sidebar {
+    width: 100%;
+  }
+}
