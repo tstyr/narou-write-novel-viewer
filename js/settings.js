@@ -1,15 +1,14 @@
-// 設定管理
 const Settings = {
   defaults: {
     fontSize: 18,
-    lineHeight: 2,
+    lineHeight: 1.8,
     fontFamily: "'Noto Serif JP', serif",
-    theme: 'sepia',  // デフォルトをセピアに
-    readingMode: 'horizontal',
+    theme: 'white',
+    readingMode: 'vertical',
     progress: {}
   },
 
-  themes: ['sepia', 'white', 'dark'],  // テーマの順番
+  themes: ['white', 'sepia', 'dark'],
 
   get() {
     const saved = localStorage.getItem('novelViewerSettings');
@@ -27,37 +26,23 @@ const Settings = {
     return settings;
   },
 
-  saveProgress(novelId, chapterIndex, scrollPosition) {
+  saveProgress(novelId, chapterIndex, pageIndex) {
     const settings = this.get();
-    settings.progress[novelId] = { chapterIndex, scrollPosition };
+    settings.progress[novelId] = { chapterIndex, pageIndex };
     this.save(settings);
   },
 
   getProgress(novelId) {
     const settings = this.get();
-    return settings.progress[novelId] || { chapterIndex: 0, scrollPosition: 0 };
+    return settings.progress[novelId] || { chapterIndex: 0, pageIndex: 0 };
   },
 
-  nextTheme(currentTheme) {
-    const idx = this.themes.indexOf(currentTheme);
+  nextTheme(current) {
+    const idx = this.themes.indexOf(current);
     return this.themes[(idx + 1) % this.themes.length];
   },
 
   getThemeIcon(theme) {
-    switch (theme) {
-      case 'sepia': return '📖';   // 本（セピア/黄ばみ）
-      case 'white': return '☀️';   // 太陽（ホワイト）
-      case 'dark': return '🌙';    // 月（ダーク）
-      default: return '📖';
-    }
-  },
-
-  getThemeName(theme) {
-    switch (theme) {
-      case 'sepia': return 'セピア';
-      case 'white': return 'ホワイト';
-      case 'dark': return 'ダーク';
-      default: return theme;
-    }
+    return { white: '☀️', sepia: '📖', dark: '🌙' }[theme] || '☀️';
   }
 };

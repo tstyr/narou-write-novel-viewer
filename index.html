@@ -2,33 +2,32 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Novel Viewer - 小説ビューワー</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>小説ビューワー</title>
   <link rel="stylesheet" href="css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
   <div id="app">
-    <!-- ヘッダー -->
     <header id="header">
       <div class="header-left">
-        <button id="menu-btn" class="icon-btn" title="メニュー">☰</button>
+        <button id="menu-btn" class="icon-btn" title="目次">☰</button>
         <h1 id="novel-title">小説ビューワー</h1>
       </div>
       <div class="header-center">
-        <input type="text" id="novel-url" placeholder="なろうURL または ncode (例: n9669bk)">
+        <input type="text" id="novel-url" placeholder="なろうURL or ncode">
         <button id="load-btn" class="icon-btn">読込</button>
       </div>
       <div class="header-right">
-        <button id="reading-mode-btn" class="icon-btn" title="縦書き/横書き切替">縦</button>
-        <button id="theme-btn" class="icon-btn theme-cycle" title="テーマ切替">
-          <span class="theme-icon">📖</span>
-        </button>
+        <button id="reading-mode-btn" class="icon-btn" title="縦書き/横書き">横</button>
+        <button id="theme-btn" class="icon-btn" title="テーマ">🌙</button>
         <button id="settings-btn" class="icon-btn" title="設定">⚙</button>
       </div>
     </header>
 
-    <!-- サイドメニュー -->
-    <aside id="sidebar" class="hidden">
+    <aside id="sidebar">
       <div class="sidebar-header">
         <h2>目次</h2>
         <button id="close-sidebar" class="icon-btn">✕</button>
@@ -37,53 +36,48 @@
       <nav id="toc"></nav>
     </aside>
 
-    <!-- メインリーダー -->
-    <main id="reader-container">
-      <div id="reader" class="horizontal-mode">
-        <div id="content">
-          <div id="welcome">
-            <h2>小説家になろうビューワー</h2>
-            <p>上部の入力欄にURLまたはncodeを入力して「読込」をクリック</p>
-            <div class="examples">
-              <p>例:</p>
-              <ul>
-                <li>https://ncode.syosetu.com/n9669bk/</li>
-                <li>n9669bk</li>
-              </ul>
+    <div id="book-container">
+      <div id="book" class="spread-view vertical-mode">
+        <div class="page" id="page-left">
+          <div class="page-content" id="content-left">
+            <div id="welcome">
+              <h2>小説家になろうビューワー</h2>
+              <p>URLまたはncodeを入力して「読込」</p>
+              <div class="examples">
+                <p>例:</p>
+                <ul>
+                  <li>n9669bk</li>
+                  <li>https://ncode.syosetu.com/n9669bk/</li>
+                </ul>
+              </div>
             </div>
           </div>
+          <div class="page-number" id="page-num-left"></div>
         </div>
+        <div class="page" id="page-right">
+          <div class="page-content" id="content-right"></div>
+          <div class="page-number" id="page-num-right"></div>
+        </div>
+        <div class="nav-area prev" id="nav-prev"></div>
+        <div class="nav-area next" id="nav-next"></div>
       </div>
-      <div id="page-indicator">
-        <span id="current-page">1</span> / <span id="total-pages">1</span>
-      </div>
-    </main>
-
-    <!-- ローディング -->
-    <div id="loading" class="hidden">
-      <div class="spinner"></div>
-      <p>読み込み中...</p>
+      <div id="page-indicator"><span id="current-page">1</span> / <span id="total-pages">1</span></div>
     </div>
 
-    <!-- ナビゲーションボタン -->
-    <button id="prev-btn" class="nav-btn" title="前のページ">‹</button>
-    <button id="next-btn" class="nav-btn" title="次のページ">›</button>
-
-    <!-- 設定パネル -->
-    <div id="settings-panel" class="hidden">
+    <div id="settings-panel">
       <div class="settings-content">
         <h3>設定</h3>
         <div class="setting-item">
           <label>フォントサイズ</label>
           <div class="font-size-controls">
             <button id="font-decrease">A-</button>
-            <span id="font-size-display">16px</span>
+            <span id="font-size-display">18px</span>
             <button id="font-increase">A+</button>
           </div>
         </div>
         <div class="setting-item">
           <label>行間</label>
-          <input type="range" id="line-height" min="1.5" max="3" step="0.1" value="2">
+          <input type="range" id="line-height" min="1.4" max="2.5" step="0.1" value="1.8">
         </div>
         <div class="setting-item">
           <label>フォント</label>
@@ -96,11 +90,13 @@
       </div>
     </div>
 
-    <!-- オーバーレイ -->
     <div id="overlay" class="hidden"></div>
+    <div id="loading" class="hidden">
+      <div class="spinner"></div>
+      <p>読み込み中...</p>
+    </div>
   </div>
 
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
   <script src="js/settings.js"></script>
   <script src="js/reader.js"></script>
   <script src="js/app.js"></script>

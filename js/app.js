@@ -1,4 +1,3 @@
-// メインアプリケーション
 document.addEventListener('DOMContentLoaded', () => {
   const reader = new NovelReader();
   
@@ -11,20 +10,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const settingsBtn = document.getElementById('settings-btn');
   const settingsPanel = document.getElementById('settings-panel');
   const closeSettings = document.getElementById('close-settings');
-  const prevBtn = document.getElementById('prev-btn');
-  const nextBtn = document.getElementById('next-btn');
   const fontDecrease = document.getElementById('font-decrease');
   const fontIncrease = document.getElementById('font-increase');
   const fontSizeDisplay = document.getElementById('font-size-display');
   const lineHeightInput = document.getElementById('line-height');
   const fontFamilySelect = document.getElementById('font-family');
   const toc = document.getElementById('toc');
-  const readerEl = document.getElementById('reader');
+  const book = document.getElementById('book');
   const novelUrl = document.getElementById('novel-url');
   const loadBtn = document.getElementById('load-btn');
+  const navPrev = document.getElementById('nav-prev');
+  const navNext = document.getElementById('nav-next');
 
-  // 初期設定を適用
   let settings = Settings.get();
+  
+  // 初期設定適用
   applyTheme(settings.theme);
   updateReadingModeBtn(settings.readingMode);
   fontSizeDisplay.textContent = `${settings.fontSize}px`;
@@ -34,95 +34,75 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 小説読み込み
   loadBtn.addEventListener('click', () => {
-    const input = novelUrl.value.trim();
-    if (input) {
-      reader.loadFromNarou(input);
-    }
+    if (novelUrl.value.trim()) reader.loadFromNarou(novelUrl.value);
   });
-
   novelUrl.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      const input = novelUrl.value.trim();
-      if (input) {
-        reader.loadFromNarou(input);
-      }
-    }
+    if (e.key === 'Enter' && novelUrl.value.trim()) reader.loadFromNarou(novelUrl.value);
   });
 
-  // サイドバー（目次）
+  // サイドバー
   menuBtn.addEventListener('click', () => {
     sidebar.classList.add('visible');
     overlay.classList.remove('hidden');
-    
-    // 現在の章にスクロール
-    setTimeout(() => {
-      const activeItem = toc.querySelector('a.active');
-      if (activeItem) {
-        activeItem.scrollIntoView({ block: 'center' });
-      }
-    }, 100);
-  });
-
-  closeSidebar.addEventListener('click', closeSidebarFn);
-  overlay.addEventListener('click', () => {
-    closeSidebarFn();
-    closeSettingsFn();
   });
 
   function closeSidebarFn() {
     sidebar.classList.remove('visible');
     overlay.classList.add('hidden');
   }
+  
+  closeSidebar.addEventListener('click', closeSidebarFn);
+  overlay.addEventListener('click', () => {
+    closeSidebarFn();
+    closeSettingsFn();
+  });
 
-  // 目次クリック
+  // 目次
   toc.addEventListener('click', (e) => {
     if (e.target.tagName === 'A') {
       e.preventDefault();
-      const chapter = parseInt(e.target.dataset.chapter);
-      reader.goToChapter(chapter);
+      reader.goToChapter(parseInt(e.target.dataset.chapter));
       closeSidebarFn();
     }
   });
 
-  // 読書モード切替
+  // 読書モード
   readingModeBtn.addEventListener('click', () => {
-    const newMode = reader.settings.readingMode === 'horizontal' ? 'vertical' : 'horizontal';
+    const newMode = reader.settings.readingMode === 'vertical' ? 'horizontal' : 'vertical';
     reader.setReadingMode(newMode);
     updateReadingModeBtn(newMode);
   });
 
   function updateReadingModeBtn(mode) {
-    readingModeBtn.textContent = mode === 'horizontal' ? '縦' : '横';
-    readingModeBtn.title = mode === 'horizontal' ? '縦書きに切替' : '横書きに切替';
+    readingModeBtn.textContent = mode === 'vertical' ? '横' : '縦';
+    readingModeBtn.title = mode === 'vertical' ? '横書きに切替' : '縦書きに切替';
   }
 
-  // テーマ切替（3つのテーマをサイクル）
+  // テーマ
   themeBtn.addEventListener('click', () => {
     settings = Settings.get();
     const newTheme = Settings.nextTheme(settings.theme);
-    settings.theme = newTheme;
     Settings.update('theme', newTheme);
     applyTheme(newTheme);
   });
 
   function applyTheme(theme) {
     document.documentElement.dataset.theme = theme;
-    themeBtn.querySelector('.theme-icon').textContent = Settings.getThemeIcon(theme);
-    themeBtn.title = `テーマ: ${Settings.getThemeName(theme)}`;
+    themeBtn.textContent = Settings.getThemeIcon(theme);
   }
 
   // 設定パネル
   settingsBtn.addEventListener('click', () => {
-    settingsPanel.classList.remove('hidden');
+    settingsPanel.classList.add('visible');
     overlay.classList.remove('hidden');
   });
 
-  closeSettings.addEventListener('click', closeSettingsFn);
-
   function closeSettingsFn() {
-    settingsPanel.classList.add('hidden');
+    settingsPanel.classList.remove('visible');
     overlay.classList.add('hidden');
   }
+  
+  closeSettings.addEventListener('click', closeSettingsFn);
 
   // フォントサイズ
   fontDecrease.addEventListener('click', () => {
@@ -130,9 +110,8 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.setFontSize(newSize);
     fontSizeDisplay.textContent = `${newSize}px`;
   });
-
   fontIncrease.addEventListener('click', () => {
-    const newSize = Math.min(32, reader.settings.fontSize + 2);
+    const newSize = Math.min(28, reader.settings.fontSize + 2);
     reader.setFontSize(newSize);
     fontSizeDisplay.textContent = `${newSize}px`;
   });
@@ -147,32 +126,35 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.setFontFamily(e.target.value);
   });
 
-  // ページ送り
-  prevBtn.addEventListener('click', () => reader.prevPage());
-  nextBtn.addEventListener('click', () => reader.nextPage());
+  // ページナビ（タップ）
+  navPrev.addEventListener('click', () => {
+    const isVertical = reader.settings.readingMode === 'vertical';
+    isVertical ? reader.nextPage() : reader.prevPage();
+  });
+  navNext.addEventListener('click', () => {
+    const isVertical = reader.settings.readingMode === 'vertical';
+    isVertical ? reader.prevPage() : reader.nextPage();
+  });
 
-  // キーボード操作
+  // キーボード
   document.addEventListener('keydown', (e) => {
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+    const isVertical = reader.settings.readingMode === 'vertical';
     
     switch (e.key) {
       case 'ArrowRight':
-        reader.settings.readingMode === 'vertical' ? reader.prevPage() : reader.nextPage();
+        isVertical ? reader.prevPage() : reader.nextPage();
         break;
       case 'ArrowLeft':
-        reader.settings.readingMode === 'vertical' ? reader.nextPage() : reader.prevPage();
+        isVertical ? reader.nextPage() : reader.prevPage();
         break;
       case 'ArrowDown':
-        reader.nextPage();
-        break;
-      case 'ArrowUp':
-        reader.prevPage();
-        break;
       case 'PageDown':
       case ' ':
         e.preventDefault();
         reader.nextPage();
         break;
+      case 'ArrowUp':
       case 'PageUp':
         e.preventDefault();
         reader.prevPage();
@@ -180,12 +162,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // タッチ操作
-  readerEl.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
-  readerEl.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
+  // タッチ（スワイプ）
+  book.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
+  book.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
 
-  // リサイズ時にページ数を更新
+  // リサイズ
+  let resizeTimer;
   window.addEventListener('resize', () => {
-    setTimeout(() => reader.updatePageIndicator(), 100);
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => reader.onResize(), 200);
   });
 });
