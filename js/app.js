@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadBtn = document.getElementById('load-btn');
   const tapPrev = document.getElementById('tap-prev');
   const tapNext = document.getElementById('tap-next');
-  const page = document.getElementById('page');
+  const book = document.getElementById('book');
 
   let settings = Settings.get();
   
@@ -225,17 +225,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // スワイプ
-  page.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
-  page.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
+  book.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
+  book.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
 
-  // マウスホイール
-  page.addEventListener('wheel', (e) => {
+  // マウスホイール（連続スクロール防止付き）
+  let wheelTimeout = null;
+  book.addEventListener('wheel', (e) => {
     e.preventDefault();
+    if (wheelTimeout) return; // 連続スクロール防止
+    
     if (e.deltaY > 0) {
       reader.nextPage();
     } else if (e.deltaY < 0) {
       reader.prevPage();
     }
+    
+    wheelTimeout = setTimeout(() => {
+      wheelTimeout = null;
+    }, 200); // 200ms間隔でページめくり
   }, { passive: false });
 
   // リサイズ時に再ページネーション
