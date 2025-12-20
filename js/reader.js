@@ -182,6 +182,15 @@ class NovelReader {
     
     const isVertical = this.settings.readingMode === 'vertical';
     
+    // currentSpreadが範囲外にならないよう修正
+    const maxSpread = this.getMaxSpread();
+    if (this.currentSpread > maxSpread) {
+      this.currentSpread = maxSpread;
+    }
+    if (this.currentSpread < 0) {
+      this.currentSpread = 0;
+    }
+    
     if (this.isMobile) {
       // スマホ: 1ページ表示
       this.elements.contentLeft.innerHTML = this.pages[this.currentSpread] || '';
@@ -193,8 +202,6 @@ class NovelReader {
       Settings.saveProgress(this.novel?.id, this.currentChapter, this.currentSpread);
     } else {
       // PC: 見開き2ページ
-      // 縦書き: 右→左の順（右が先）
-      // 横書き: 左→右の順（左が先）
       const spreadIndex = this.currentSpread * 2;
       
       if (isVertical) {
@@ -208,7 +215,7 @@ class NovelReader {
       }
       
       // ページ番号表示（見開き番号）
-      const totalSpreads = Math.ceil(this.pages.length / 2);
+      const totalSpreads = Math.max(1, Math.ceil(this.pages.length / 2));
       this.elements.currentPageEl.textContent = this.currentSpread + 1;
       this.elements.totalPagesEl.textContent = totalSpreads;
       

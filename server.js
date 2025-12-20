@@ -77,7 +77,23 @@ async function fetchChapterContent(ncode, chapterNum) {
   const chapterUrl = `https://ncode.syosetu.com/${ncode}/${chapterNum}/`;
   console.log(`Fetching chapter: ${chapterUrl}`);
   
-  const data = await httpsGet(chapterUrl);
+  let data;
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      data = await httpsGet(chapterUrl);
+      if (data && data.length > 1000) break;
+    } catch (e) {
+      console.log(`Retry ${4 - retries}: ${e.message}`);
+    }
+    retries--;
+    if (retries > 0) await new Promise(r => setTimeout(r, 1000));
+  }
+  
+  if (!data || data.length < 1000) {
+    throw new Error('ページの取得に失敗しました。しばらく待ってから再試行してください。');
+  }
+  
   console.log(`Received ${data.length} bytes`);
   
   // エラーページチェック
@@ -89,6 +105,7 @@ async function fetchChapterContent(ncode, chapterNum) {
   let title = `第${chapterNum}話`;
   const titlePatterns = [
     /<p class="novel_subtitle">([^<]+)<\/p>/,
+    /<p class="p-novel__subtitle">([^<]+)<\/p>/,
     /<h1[^>]*class="[^"]*novel[^"]*title[^"]*"[^>]*>([^<]+)<\/h1>/i,
     /<title>([^<|]+)/
   ];
@@ -100,18 +117,20 @@ async function fetchChapterContent(ncode, chapterNum) {
     }
   }
 
-  // 本文抽出
+  // 本文抽出（複数パターン対応）
   let content = '';
   const contentPatterns = [
     /<div id="novel_honbun"[^>]*>([\s\S]*?)<\/div>\s*(?:<div|<script|$)/,
-    /<div class="p-novel__body"[^>]*>([\s\S]*?)<\/div>/,
-    /<div[^>]*class="[^"]*novel_view[^"]*"[^>]*>([\s\S]*?)<\/div>/
+    /<div class="p-novel__body"[^>]*>([\s\S]*?)<\/div>\s*(?:<div class="p-novel|<script|$)/,
+    /<div id="novel_honbun"[^>]*>([\s\S]*?)<\/div>/,
+    /<div class="novel_view"[^>]*>([\s\S]*?)<\/div>/
   ];
   
   for (const pattern of contentPatterns) {
     const match = data.match(pattern);
-    if (match) {
+    if (match && match[1].trim().length > 10) {
       content = match[1];
+      console.log(`Content matched with pattern: ${pattern.toString().substring(0, 50)}`);
       break;
     }
   }
@@ -119,7 +138,7 @@ async function fetchChapterContent(ncode, chapterNum) {
   if (!content) {
     // デバッグ用
     console.log('=== HTML Sample ===');
-    console.log(data.substring(0, 3000));
+    console.log(data.substring(0, 5000));
     console.log('===================');
     throw new Error('本文が見つかりません。サイト構造が変更された可能性があります。');
   }
@@ -141,6 +160,10 @@ async function fetchChapterContent(ncode, chapterNum) {
   const paragraphs = content.split('\n')
     .map(p => p.trim())
     .filter(p => p.length > 0);
+
+  if (paragraphs.length === 0) {
+    throw new Error('本文が空です');
+  }
 
   return { title, content: paragraphs };
 }

@@ -39,4 +39,4 @@ node server.js
 
 - HTML/CSS/JavaScript（バニラ）
 - Node.js（サーバー）
-- Vercel Serverless Functions（デプロイ時）
+- Vercel Serverless Functions（使用を推奨しません）
