@@ -258,19 +258,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const prevChapterBtn = document.getElementById('prev-chapter');
   const nextChapterBtn = document.getElementById('next-chapter');
   
-  if (prevChapterBtn) {
-    prevChapterBtn.addEventListener('click', () => {
-      if (reader.novel && reader.currentChapter > 0) {
-        reader.goToChapter(reader.currentChapter - 1, 0);
-      }
-    });
-  }
+  prevChapterBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (reader.novel && reader.currentChapter > 0) {
+      reader.goToChapter(reader.currentChapter - 1, 0);
+    }
+  });
   
-  if (nextChapterBtn) {
-    nextChapterBtn.addEventListener('click', () => {
-      if (reader.novel && reader.currentChapter < reader.novel.chapters.length - 1) {
-        reader.goToChapter(reader.currentChapter + 1, 0);
-      }
-    });
-  }
+  nextChapterBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (reader.novel && reader.currentChapter < reader.novel.chapters.length - 1) {
+      reader.goToChapter(reader.currentChapter + 1, 0);
+    }
+  });
 });
