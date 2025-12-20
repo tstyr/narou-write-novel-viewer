@@ -34,6 +34,7 @@ class NovelReader {
     };
     
     this.touchStartX = 0;
+    this.loadingTimer = null;
   }
 
   // ページめくり時間を記録して読書速度を計算
@@ -103,11 +104,18 @@ class NovelReader {
     }
   }
 
-  showLoading(text = '読み込み中...') { 
-    this.elements.loading.querySelector('p').textContent = text;
-    this.elements.loading.classList.remove('hidden'); 
+  showLoading(text = '読み込み中...', delay = 150) { 
+    // 遅延表示（速い読み込みではチカチカしない）
+    clearTimeout(this.loadingTimer);
+    this.loadingTimer = setTimeout(() => {
+      this.elements.loading.querySelector('p').textContent = text;
+      this.elements.loading.classList.remove('hidden');
+    }, delay);
   }
-  hideLoading() { this.elements.loading.classList.add('hidden'); }
+  hideLoading() { 
+    clearTimeout(this.loadingTimer);
+    this.elements.loading.classList.add('hidden'); 
+  }
 
   extractNcode(input) {
     input = input.trim();
