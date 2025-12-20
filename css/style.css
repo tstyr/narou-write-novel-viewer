@@ -37,10 +37,9 @@ html, body {
 }
 
 body {
-  font-family: 'Noto Serif JP', 'Yu Mincho', 'Hiragino Mincho Pro', serif;
+  font-family: 'Noto Serif JP', 'Yu Mincho', serif;
   background-color: var(--bg-color);
   color: var(--text-color);
-  transition: background-color 0.3s, color 0.3s;
 }
 
 #app {
@@ -70,12 +69,11 @@ body {
 
 #novel-title {
   font-size: 0.8rem;
-  font-weight: normal;
   margin-left: 0.3rem;
-  white-space: nowrap;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100px;
+  white-space: nowrap;
 }
 
 .icon-btn {
@@ -87,14 +85,12 @@ body {
   color: var(--text-color);
   font-size: 0.8rem;
   touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
 }
 
 .icon-btn:active {
   background: var(--border-color);
 }
 
-/* URL入力 */
 .header-center {
   display: flex;
   align-items: center;
@@ -119,7 +115,6 @@ body {
   background: var(--accent-color);
   color: #fff;
   border: none;
-  flex-shrink: 0;
 }
 
 /* サイドバー */
@@ -156,19 +151,13 @@ body {
   font-size: 0.8rem;
 }
 
-#novel-info .info-title {
-  font-weight: bold;
-}
-
-#novel-info .info-author {
-  color: var(--accent-color);
-}
+#novel-info .info-title { font-weight: bold; }
+#novel-info .info-author { color: var(--accent-color); }
 
 #toc {
   flex: 1;
   overflow-y: auto;
   padding: 0.4rem;
-  -webkit-overflow-scrolling: touch;
 }
 
 .toc-section {
@@ -189,12 +178,11 @@ body {
   font-size: 0.8rem;
 }
 
-#toc a:active, #toc a.active {
+#toc a.active {
   background: var(--accent-color);
   color: #fff;
 }
 
-/* オーバーレイ */
 #overlay {
   position: fixed;
   top: 0;
@@ -207,79 +195,76 @@ body {
 
 .hidden { display: none !important; }
 
-/* リーダーコンテナ - 画面全体を使用 */
-#reader-container {
+/* ページコンテナ */
+#page-container {
   flex: 1;
-  position: relative;
-  overflow: hidden;
-  background: var(--bg-color);
-}
-
-#reader {
-  width: 100%;
-  height: 100%;
-  padding: 1rem;
-  overflow: hidden;
   display: flex;
   justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  position: relative;
+  padding: 0.5rem;
 }
 
-#content {
-  max-width: 800px;
+/* ページ */
+#page {
+  width: 100%;
   height: 100%;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 0 1rem;
+  max-width: 700px;
+  background: var(--bg-color);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+#page-content {
+  flex: 1;
+  overflow: hidden;
 }
 
 /* 縦書き */
-.vertical-mode #content {
+.vertical-mode #page-content {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  overflow-x: auto;
-  overflow-y: hidden;
-  max-width: none;
-  width: 100%;
-  max-height: 100%;
 }
 
 /* 横書き */
-.horizontal-mode #content {
+.horizontal-mode #page-content {
   writing-mode: horizontal-tb;
-  overflow-x: hidden;
-  overflow-y: auto;
 }
 
 /* テキスト */
-#content p {
+#page-content p {
   text-indent: 1em;
-  margin-bottom: 0.3em;
+  margin-bottom: 0.4em;
   text-align: justify;
 }
 
-#content .chapter-title {
-  font-size: 1.3em;
+#page-content .chapter-title {
+  font-size: 1.2em;
   font-weight: bold;
   text-indent: 0;
-  margin: 0.5em 0 1em;
+  margin-bottom: 1em;
   text-align: center;
 }
 
-/* ナビエリア（タップ用） - 章ナビより下に */
-.nav-area {
+/* タップエリア */
+.tap-area {
   position: absolute;
   top: 0;
   height: 100%;
-  width: 20%;
-  z-index: 5;
-  pointer-events: auto;
+  width: 30%;
+  z-index: 10;
+  cursor: pointer;
 }
 
-.nav-area.prev { left: 0; }
-.nav-area.next { right: 0; }
+.tap-area.prev { left: 0; }
+.tap-area.next { right: 0; }
 
-/* ページインジケーター */
-#page-indicator {
+/* ページ情報 */
+#page-info {
   position: absolute;
   bottom: 0.5rem;
   left: 50%;
@@ -290,12 +275,8 @@ body {
   background: var(--bg-color);
   padding: 0.2rem 0.6rem;
   border-radius: 8px;
-  z-index: 5;
   white-space: nowrap;
-}
-
-#chapter-info {
-  color: var(--accent-color);
+  z-index: 5;
 }
 
 /* 設定パネル */
@@ -322,7 +303,6 @@ body {
   margin-bottom: 0.8rem;
   padding-bottom: 0.4rem;
   border-bottom: 1px solid var(--border-color);
-  font-size: 1rem;
 }
 
 .setting-item {
@@ -350,9 +330,7 @@ body {
   cursor: pointer;
 }
 
-input[type="range"] {
-  width: 100%;
-}
+input[type="range"] { width: 100%; }
 
 select {
   width: 100%;
@@ -400,9 +378,7 @@ select {
   margin-bottom: 0.5rem;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ウェルカム */
 #welcome {
@@ -435,44 +411,6 @@ select {
   color: var(--accent-color);
 }
 
-/* 章ナビ */
-.chapter-nav {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 1rem 0;
-  margin-top: 1rem;
-  border-top: 1px solid var(--border-color);
-  position: relative;
-  z-index: 20;
-}
-
-.chapter-nav button {
-  flex: 1;
-  padding: 0.8rem 1rem;
-  background: var(--accent-color);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.chapter-nav button:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.chapter-nav button:active:not(:disabled) {
-  opacity: 0.8;
-}
-
-.chapter-nav button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 /* スマホ */
 @media (max-width: 600px) {
   #header {
@@ -489,30 +427,9 @@ select {
   
   #novel-title { display: none; }
   
-  #reader {
-    padding: 0.8rem;
-  }
+  #page-container { padding: 0.3rem; }
   
-  .nav-area {
-    width: 30%;
-  }
-}
-
-@media (max-width: 400px) {
-  .icon-btn {
-    padding: 0.25rem 0.35rem;
-    font-size: 0.75rem;
-  }
+  #page { padding: 1rem; }
   
-  #reader {
-    padding: 0.6rem;
-  }
-}
-
-/* PWA */
-@media (display-mode: standalone) {
-  #app {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+  .tap-area { width: 25%; }
 }

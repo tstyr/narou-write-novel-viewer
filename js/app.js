@@ -18,13 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const toc = document.getElementById('toc');
   const novelUrl = document.getElementById('novel-url');
   const loadBtn = document.getElementById('load-btn');
-  const navPrev = document.getElementById('nav-prev');
-  const navNext = document.getElementById('nav-next');
-  const content = document.getElementById('content');
+  const tapPrev = document.getElementById('tap-prev');
+  const tapNext = document.getElementById('tap-next');
+  const page = document.getElementById('page');
 
   let settings = Settings.get();
   
-  // 初期設定
   applyTheme(settings.theme);
   updateReadingModeBtn(settings.readingMode);
   fontSizeDisplay.textContent = `${settings.fontSize}px`;
@@ -61,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   toc.addEventListener('click', (e) => {
     if (e.target.tagName === 'A') {
       e.preventDefault();
-      reader.goToChapter(parseInt(e.target.dataset.chapter));
+      reader.goToChapter(parseInt(e.target.dataset.chapter), 0);
       closeSidebarFn();
     }
   });
@@ -125,12 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.setFontFamily(e.target.value);
   });
 
-  // タップナビ
-  navPrev.addEventListener('click', () => {
-    reader.settings.readingMode === 'vertical' ? reader.nextPage() : reader.prevPage();
+  // タップでページめくり
+  tapPrev.addEventListener('click', () => {
+    const isVertical = reader.settings.readingMode === 'vertical';
+    isVertical ? reader.nextPage() : reader.prevPage();
   });
-  navNext.addEventListener('click', () => {
-    reader.settings.readingMode === 'vertical' ? reader.prevPage() : reader.nextPage();
+  tapNext.addEventListener('click', () => {
+    const isVertical = reader.settings.readingMode === 'vertical';
+    isVertical ? reader.prevPage() : reader.nextPage();
   });
 
   // キーボード
@@ -159,30 +160,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // スワイプ（素早いスワイプのみ反応）
-  content.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
-  content.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
+  // スワイプ
+  page.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
+  page.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
 
-  // マウスホイール（PCのみ）
-  content.addEventListener('wheel', (e) => {
-    // スマホ/タブレットではホイールイベントを無視
-    if ('ontouchstart' in window) return;
-    
+  // マウスホイール
+  page.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const isVertical = reader.settings.readingMode === 'vertical';
-    
-    if (isVertical) {
-      if (e.deltaY > 0 || e.deltaX < 0) {
-        reader.nextPage();
-      } else if (e.deltaY < 0 || e.deltaX > 0) {
-        reader.prevPage();
-      }
-    } else {
-      if (e.deltaY > 0) {
-        reader.nextPage();
-      } else if (e.deltaY < 0) {
-        reader.prevPage();
-      }
+    if (e.deltaY > 0) {
+      reader.nextPage();
+    } else if (e.deltaY < 0) {
+      reader.prevPage();
     }
   }, { passive: false });
+
+  // リサイズ時に再ページネーション
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (reader.chapterData) {
+        reader.paginate();
+        reader.currentPage = Math.min(reader.currentPage, reader.pages.length - 1);
+        reader.renderPage();
+      }
+    }, 300);
+  });
 });

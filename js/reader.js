@@ -2,22 +2,24 @@ class NovelReader {
   constructor() {
     this.novel = null;
     this.currentChapter = 0;
+    this.pages = [];
+    this.currentPage = 0;
+    this.chapterData = null;
     this.settings = Settings.get();
     
     this.elements = {
-      reader: document.getElementById('reader'),
-      content: document.getElementById('content'),
+      page: document.getElementById('page'),
+      pageContent: document.getElementById('page-content'),
       title: document.getElementById('novel-title'),
       toc: document.getElementById('toc'),
       novelInfo: document.getElementById('novel-info'),
       chapterInfo: document.getElementById('chapter-info'),
-      currentPage: document.getElementById('current-page'),
-      totalPages: document.getElementById('total-pages'),
+      currentPageEl: document.getElementById('current-page'),
+      totalPagesEl: document.getElementById('total-pages'),
       loading: document.getElementById('loading')
     };
     
     this.touchStartX = 0;
-    this.touchStartY = 0;
   }
 
   showLoading() { this.elements.loading.classList.remove('hidden'); }
@@ -49,7 +51,7 @@ class NovelReader {
       this.showNovelInfo();
       
       const progress = Settings.getProgress(ncode);
-      await this.goToChapter(progress.chapterIndex || 0);
+      await this.goToChapter(progress.chapterIndex || 0, progress.pageIndex || 0);
     } catch (e) {
       alert('読み込みに失敗しました: ' + e.message);
     } finally {
@@ -58,7 +60,6 @@ class NovelReader {
   }
 
   showNovelInfo() {
-    if (!this.novel) return;
     this.elements.novelInfo.innerHTML = `
       <div class="info-title">${this.escapeHtml(this.novel.title)}</div>
       <div class="info-author">作者: ${this.escapeHtml(this.novel.author)}</div>
@@ -78,7 +79,7 @@ class NovelReader {
     this.elements.toc.innerHTML = html;
   }
 
-  async goToChapter(index) {
+  async goToChapter(index, startPage = 0) {
     if (!this.novel || index < 0 || index >= this.novel.chapters.length) return;
     
     this.showLoading();
@@ -89,67 +90,94 @@ class NovelReader {
       const res = await fetch(`/api/chapter?ncode=${this.novel.id}&chapter=${chapter.number}`);
       if (!res.ok) throw new Error((await res.json()).error);
       
-      const data = await res.json();
-      
-      const html = `
-        <h2 class="chapter-title">${this.escapeHtml(data.title)}</h2>
-        ${data.content.map(p => `<p>${this.escapeHtml(p)}</p>`).join('')}
-        <div class="chapter-nav">
-          <button id="prev-chapter" ${index === 0 ? 'disabled' : ''}>← 前の話</button>
-          <button id="next-chapter" ${index >= this.novel.chapters.length - 1 ? 'disabled' : ''}>次の話 →</button>
-        </div>
-      `;
-      this.elements.content.innerHTML = html;
-      
-      // スクロールリセット
-      this.elements.content.scrollTop = 0;
-      this.elements.content.scrollLeft = this.elements.content.scrollWidth;
-      
-      // 章ナビイベント
-      document.getElementById('prev-chapter')?.addEventListener('click', () => this.goToChapter(index - 1));
-      document.getElementById('next-chapter')?.addEventListener('click', () => this.goToChapter(index + 1));
-      
+      this.chapterData = await res.json();
+      this.paginate();
+      this.currentPage = Math.min(startPage, this.pages.length - 1);
+      this.renderPage();
       this.updateTocActive();
       this.updateChapterInfo();
-      this.updatePageIndicator();
-      Settings.saveProgress(this.novel.id, index, 0);
-      
-      // スクロールイベント
-      this.elements.content.addEventListener('scroll', () => this.updatePageIndicator());
-      
     } catch (e) {
-      this.elements.content.innerHTML = `<p>読み込み失敗: ${e.message}</p>`;
+      this.elements.pageContent.innerHTML = `<p>読み込み失敗: ${e.message}</p>`;
+      this.pages = [];
     } finally {
       this.hideLoading();
     }
   }
 
-  updateChapterInfo() {
-    if (!this.novel) return;
-    const chapter = this.novel.chapters[this.currentChapter];
-    this.elements.chapterInfo.textContent = `第${this.currentChapter + 1}話/${this.novel.chapters.length}話 | `;
-  }
+  paginate() {
+    this.pages = [];
+    if (!this.chapterData) return;
 
-  updatePageIndicator() {
-    const content = this.elements.content;
+    const content = this.elements.pageContent;
     const isVertical = this.settings.readingMode === 'vertical';
     
-    let current, total;
-    if (isVertical) {
-      const scrollWidth = content.scrollWidth;
-      const clientWidth = content.clientWidth;
-      const scrollLeft = scrollWidth - clientWidth - content.scrollLeft;
-      total = Math.max(1, Math.ceil(scrollWidth / clientWidth));
-      current = Math.max(1, Math.ceil((scrollLeft + clientWidth) / clientWidth));
-    } else {
-      const scrollHeight = content.scrollHeight;
-      const clientHeight = content.clientHeight;
-      total = Math.max(1, Math.ceil(scrollHeight / clientHeight));
-      current = Math.max(1, Math.ceil((content.scrollTop + clientHeight) / clientHeight));
+    // 一時的にコンテンツを設定してサイズを計測
+    const allContent = [
+      `<h2 class="chapter-title">${this.escapeHtml(this.chapterData.title)}</h2>`,
+      ...this.chapterData.content.map(p => `<p>${this.escapeHtml(p)}</p>`)
+    ];
+    
+    // ページサイズを取得
+    const pageWidth = content.clientWidth;
+    const pageHeight = content.clientHeight;
+    
+    // 各段落を1つずつ追加してページを構築
+    let currentPageContent = [];
+    let testDiv = document.createElement('div');
+    testDiv.style.cssText = `
+      position: absolute;
+      visibility: hidden;
+      width: ${pageWidth}px;
+      height: ${pageHeight}px;
+      font-size: ${this.settings.fontSize}px;
+      line-height: ${this.settings.lineHeight};
+      font-family: ${this.settings.fontFamily};
+      overflow: hidden;
+      ${isVertical ? 'writing-mode: vertical-rl;' : ''}
+    `;
+    document.body.appendChild(testDiv);
+    
+    for (let i = 0; i < allContent.length; i++) {
+      currentPageContent.push(allContent[i]);
+      testDiv.innerHTML = currentPageContent.join('');
+      
+      const overflow = isVertical 
+        ? testDiv.scrollWidth > pageWidth
+        : testDiv.scrollHeight > pageHeight;
+      
+      if (overflow && currentPageContent.length > 1) {
+        // 最後の要素を除いてページを確定
+        currentPageContent.pop();
+        this.pages.push(currentPageContent.join(''));
+        currentPageContent = [allContent[i]];
+      }
     }
     
-    this.elements.currentPage.textContent = current;
-    this.elements.totalPages.textContent = total;
+    // 残りをページに追加
+    if (currentPageContent.length > 0) {
+      this.pages.push(currentPageContent.join(''));
+    }
+    
+    document.body.removeChild(testDiv);
+    
+    if (this.pages.length === 0) {
+      this.pages = ['<p>コンテンツがありません</p>'];
+    }
+  }
+
+  renderPage() {
+    if (this.pages.length === 0) return;
+    
+    this.elements.pageContent.innerHTML = this.pages[this.currentPage];
+    this.elements.currentPageEl.textContent = this.currentPage + 1;
+    this.elements.totalPagesEl.textContent = this.pages.length;
+    
+    Settings.saveProgress(this.novel?.id, this.currentChapter, this.currentPage);
+  }
+
+  updateChapterInfo() {
+    if (!this.novel) return;
+    this.elements.chapterInfo.textContent = `${this.currentChapter + 1}/${this.novel.chapters.length}話 | `;
   }
 
   updateTocActive() {
@@ -158,83 +186,91 @@ class NovelReader {
     });
   }
 
-  scrollPage(direction) {
-    const content = this.elements.content;
-    const isVertical = this.settings.readingMode === 'vertical';
-    
-    // スマホでは小さめのスクロール量
-    const isMobile = window.innerWidth <= 600;
-    const ratio = isMobile ? 0.7 : 0.85;
-    
-    if (isVertical) {
-      const amount = content.clientWidth * ratio;
-      content.scrollBy({ left: direction * -amount, behavior: 'smooth' });
-    } else {
-      const amount = content.clientHeight * ratio;
-      content.scrollBy({ top: direction * amount, behavior: 'smooth' });
+  nextPage() {
+    if (this.currentPage < this.pages.length - 1) {
+      this.currentPage++;
+      this.renderPage();
+    } else if (this.currentChapter < this.novel.chapters.length - 1) {
+      // 次の章へ
+      this.goToChapter(this.currentChapter + 1, 0);
     }
   }
 
-  nextPage() { this.scrollPage(1); }
-  prevPage() { this.scrollPage(-1); }
+  prevPage() {
+    if (this.currentPage > 0) {
+      this.currentPage--;
+      this.renderPage();
+    } else if (this.currentChapter > 0) {
+      // 前の章の最後のページへ
+      this.goToChapter(this.currentChapter - 1, 9999);
+    }
+  }
 
   setReadingMode(mode) {
     this.settings.readingMode = mode;
     Settings.update('readingMode', mode);
-    this.elements.reader.classList.remove('vertical-mode', 'horizontal-mode');
-    this.elements.reader.classList.add(`${mode}-mode`);
+    this.elements.page.classList.remove('vertical-mode', 'horizontal-mode');
+    this.elements.page.classList.add(`${mode}-mode`);
     
-    // スクロール位置リセット
-    if (mode === 'vertical') {
-      this.elements.content.scrollLeft = this.elements.content.scrollWidth;
-    } else {
-      this.elements.content.scrollTop = 0;
+    if (this.chapterData) {
+      this.paginate();
+      this.currentPage = 0;
+      this.renderPage();
     }
-    this.updatePageIndicator();
   }
 
   setFontSize(size) {
     this.settings.fontSize = size;
     Settings.update('fontSize', size);
-    this.elements.content.style.fontSize = `${size}px`;
-    this.updatePageIndicator();
+    this.elements.pageContent.style.fontSize = `${size}px`;
+    
+    if (this.chapterData) {
+      this.paginate();
+      this.currentPage = 0;
+      this.renderPage();
+    }
   }
 
   setLineHeight(height) {
     this.settings.lineHeight = height;
     Settings.update('lineHeight', height);
-    this.elements.content.style.lineHeight = height;
-    this.updatePageIndicator();
+    this.elements.pageContent.style.lineHeight = height;
+    
+    if (this.chapterData) {
+      this.paginate();
+      this.currentPage = 0;
+      this.renderPage();
+    }
   }
 
   setFontFamily(family) {
     this.settings.fontFamily = family;
     Settings.update('fontFamily', family);
-    this.elements.content.style.fontFamily = family;
-    this.updatePageIndicator();
+    this.elements.pageContent.style.fontFamily = family;
+    
+    if (this.chapterData) {
+      this.paginate();
+      this.currentPage = 0;
+      this.renderPage();
+    }
   }
 
   applySettings() {
-    this.elements.content.style.fontSize = `${this.settings.fontSize}px`;
-    this.elements.content.style.lineHeight = this.settings.lineHeight;
-    this.elements.content.style.fontFamily = this.settings.fontFamily;
-    this.setReadingMode(this.settings.readingMode);
+    this.elements.pageContent.style.fontSize = `${this.settings.fontSize}px`;
+    this.elements.pageContent.style.lineHeight = this.settings.lineHeight;
+    this.elements.pageContent.style.fontFamily = this.settings.fontFamily;
+    this.elements.page.classList.remove('vertical-mode', 'horizontal-mode');
+    this.elements.page.classList.add(`${this.settings.readingMode}-mode`);
   }
 
   handleTouchStart(e) {
     this.touchStartX = e.touches[0].clientX;
-    this.touchStartY = e.touches[0].clientY;
-    this.touchStartTime = Date.now();
   }
 
   handleTouchEnd(e) {
     const dx = e.changedTouches[0].clientX - this.touchStartX;
-    const dy = e.changedTouches[0].clientY - this.touchStartY;
-    const dt = Date.now() - this.touchStartTime;
     
-    // 素早いスワイプのみページ送り（通常のスクロールは許可）
-    // 150ms以内で100px以上の横移動
-    if (dt < 150 && Math.abs(dx) > 100 && Math.abs(dx) > Math.abs(dy) * 2) {
+    if (Math.abs(dx) > 50) {
       const isVertical = this.settings.readingMode === 'vertical';
       if (dx > 0) {
         isVertical ? this.nextPage() : this.prevPage();
