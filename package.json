@@ -1,0 +1,12 @@
+{
+  "name": "narou-novel-viewer",
+  "version": "1.0.0",
+  "description": "小説家になろうビューワー",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@sparticuz/chromium-min": "^123.0.0",
+    "puppeteer-core": "^22.0.0"
+  }
+}

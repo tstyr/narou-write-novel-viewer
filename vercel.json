@@ -1,4 +1,10 @@
 {
+  "functions": {
+    "api/chapter.js": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
     { "source": "/api/novel", "destination": "/api/novel" },
     { "source": "/api/chapter", "destination": "/api/chapter" }

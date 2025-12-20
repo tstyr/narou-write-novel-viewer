@@ -11,20 +11,10 @@ function httpsGet(targetUrl) {
       path: parsedUrl.pathname + parsedUrl.search,
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-        'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-        'Sec-Ch-Ua-Mobile': '?0',
-        'Sec-Ch-Ua-Platform': '"Windows"',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Upgrade-Insecure-Requests': '1'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3',
+        'Accept-Encoding': 'gzip, deflate'
       }
     };
 
@@ -39,13 +29,10 @@ function httpsGet(targetUrl) {
       }
 
       let stream = res;
-      const encoding = res.headers['content-encoding'];
-      if (encoding === 'gzip') {
+      if (res.headers['content-encoding'] === 'gzip') {
         stream = res.pipe(zlib.createGunzip());
-      } else if (encoding === 'deflate') {
+      } else if (res.headers['content-encoding'] === 'deflate') {
         stream = res.pipe(zlib.createInflate());
-      } else if (encoding === 'br') {
-        stream = res.pipe(zlib.createBrotliDecompress());
       }
 
       const chunks = [];
@@ -58,41 +45,51 @@ function httpsGet(targetUrl) {
   });
 }
 
-// なろうAPI（これはブロックされない）
 async function fetchNovelInfo(ncode) {
   const apiUrl = `${NAROU_API}?of=t-w-s-ga&ncode=${ncode}&out=json`;
   const data = await httpsGet(apiUrl);
-  
-  try {
-    const json = JSON.parse(data);
-    if (json.length > 1) return json[1];
-  } catch (e) {
-    console.error('API parse error:', data.substring(0, 500));
-  }
+  const json = JSON.parse(data);
+  if (json.length > 1) return json[1];
   throw new Error('小説が見つかりません');
 }
 
-// 目次はAPIから話数を取得して生成
-async function generateToc(ncode, totalChapters) {
+async function fetchTableOfContents(ncode) {
+  const tocUrl = `https://ncode.syosetu.com/${ncode}/`;
+  const data = await httpsGet(tocUrl);
+  
   const chapters = [];
-  for (let i = 1; i <= totalChapters; i++) {
-    chapters.push({
-      number: i,
-      title: `第${i}話`,
-      section: null
-    });
+  const sections = [];
+  
+  const chapterTitleRegex = /<div class="chapter_title">([^<]+)<\/div>/g;
+  let chapterMatch;
+  while ((chapterMatch = chapterTitleRegex.exec(data)) !== null) {
+    sections.push({ title: chapterMatch[1].trim(), index: chapterMatch.index });
   }
-  return { chapters, sections: [] };
+  
+  const regex = /<a href="\/[^/]+\/(\d+)\/"[^>]*>([^<]+)<\/a>/g;
+  let match;
+  while ((match = regex.exec(data)) !== null) {
+    const num = parseInt(match[1]);
+    if (!chapters.find(c => c.number === num) && match[2].trim().length > 0) {
+      let sectionTitle = null;
+      for (let i = sections.length - 1; i >= 0; i--) {
+        if (sections[i].index < match.index) {
+          sectionTitle = sections[i].title;
+          break;
+        }
+      }
+      chapters.push({ number: num, title: match[2].trim(), section: sectionTitle });
+    }
+  }
+
+  chapters.sort((a, b) => a.number - b.number);
+  if (chapters.length === 0) chapters.push({ number: 1, title: '本編', section: null });
+
+  return { chapters, sections: [...new Set(sections.map(s => s.title))] };
 }
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
   
   const { ncode } = req.query;
   if (!ncode) {
@@ -100,21 +97,21 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const info = await fetchNovelInfo(ncode.toLowerCase());
-    const totalChapters = info.general_all_no || 1;
-    const tocData = await generateToc(ncode, totalChapters);
+    const [info, tocData] = await Promise.all([
+      fetchNovelInfo(ncode),
+      fetchTableOfContents(ncode)
+    ]);
     
     res.status(200).json({
-      id: ncode.toLowerCase(),
+      id: ncode,
       title: info.title,
       author: info.writer,
       story: info.story,
-      totalChapters: totalChapters,
+      totalChapters: info.general_all_no || tocData.chapters.length,
       chapters: tocData.chapters,
       sections: tocData.sections
     });
   } catch (error) {
-    console.error('Error:', error.message);
     res.status(500).json({ error: error.message });
   }
 };
