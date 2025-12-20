@@ -162,11 +162,15 @@ class NovelReader {
     const content = this.elements.content;
     const isVertical = this.settings.readingMode === 'vertical';
     
+    // スマホでは小さめのスクロール量
+    const isMobile = window.innerWidth <= 600;
+    const ratio = isMobile ? 0.7 : 0.85;
+    
     if (isVertical) {
-      const amount = content.clientWidth * 0.9;
+      const amount = content.clientWidth * ratio;
       content.scrollBy({ left: direction * -amount, behavior: 'smooth' });
     } else {
-      const amount = content.clientHeight * 0.9;
+      const amount = content.clientHeight * ratio;
       content.scrollBy({ top: direction * amount, behavior: 'smooth' });
     }
   }
@@ -220,14 +224,17 @@ class NovelReader {
   handleTouchStart(e) {
     this.touchStartX = e.touches[0].clientX;
     this.touchStartY = e.touches[0].clientY;
+    this.touchStartTime = Date.now();
   }
 
   handleTouchEnd(e) {
     const dx = e.changedTouches[0].clientX - this.touchStartX;
     const dy = e.changedTouches[0].clientY - this.touchStartY;
+    const dt = Date.now() - this.touchStartTime;
     
-    // 横スワイプが縦より大きい場合のみ
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+    // 素早いスワイプのみページ送り（通常のスクロールは許可）
+    // 150ms以内で100px以上の横移動
+    if (dt < 150 && Math.abs(dx) > 100 && Math.abs(dx) > Math.abs(dy) * 2) {
       const isVertical = this.settings.readingMode === 'vertical';
       if (dx > 0) {
         isVertical ? this.nextPage() : this.prevPage();
