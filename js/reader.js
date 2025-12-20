@@ -52,6 +52,9 @@ class NovelReader {
       this.buildToc();
       this.showNovelInfo();
       
+      // 履歴に追加
+      Settings.addHistory(this.novel.id, this.novel.title, this.novel.author);
+      
       const progress = Settings.getProgress(ncode);
       await this.goToChapter(progress.chapterIndex || 0, progress.pageIndex || 0);
     } catch (e) {

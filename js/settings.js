@@ -5,10 +5,12 @@ const Settings = {
     fontFamily: "'Noto Serif JP', serif",
     theme: 'white',
     readingMode: 'vertical',
-    progress: {}
+    progress: {},
+    history: []
   },
 
   themes: ['white', 'sepia', 'dark'],
+  maxHistory: 20,
 
   get() {
     const saved = localStorage.getItem('novelViewerSettings');
@@ -35,6 +37,42 @@ const Settings = {
   getProgress(novelId) {
     const settings = this.get();
     return settings.progress[novelId] || { chapterIndex: 0, pageIndex: 0 };
+  },
+
+  addHistory(novelId, title, author) {
+    const settings = this.get();
+    if (!settings.history) settings.history = [];
+    
+    // 既存の同じ小説を削除
+    settings.history = settings.history.filter(h => h.id !== novelId);
+    
+    // 先頭に追加
+    settings.history.unshift({
+      id: novelId,
+      title: title,
+      author: author,
+      lastRead: Date.now()
+    });
+    
+    // 最大数を超えたら古いものを削除
+    if (settings.history.length > this.maxHistory) {
+      settings.history = settings.history.slice(0, this.maxHistory);
+    }
+    
+    this.save(settings);
+  },
+
+  getHistory() {
+    const settings = this.get();
+    return settings.history || [];
+  },
+
+  removeHistory(novelId) {
+    const settings = this.get();
+    if (!settings.history) return;
+    settings.history = settings.history.filter(h => h.id !== novelId);
+    delete settings.progress[novelId];
+    this.save(settings);
   },
 
   nextTheme(current) {

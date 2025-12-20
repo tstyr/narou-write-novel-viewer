@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const lineHeightInput = document.getElementById('line-height');
   const fontFamilySelect = document.getElementById('font-family');
   const toc = document.getElementById('toc');
+  const historyEl = document.getElementById('history');
   const novelUrl = document.getElementById('novel-url');
   const loadBtn = document.getElementById('load-btn');
   const tapPrev = document.getElementById('tap-prev');
@@ -30,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
   lineHeightInput.value = settings.lineHeight;
   fontFamilySelect.value = settings.fontFamily;
   reader.applySettings();
+  
+  // 初期履歴表示
+  renderHistory();
 
   // 読み込み
   loadBtn.addEventListener('click', () => {
@@ -43,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
   menuBtn.addEventListener('click', () => {
     sidebar.classList.add('visible');
     overlay.classList.remove('hidden');
+    renderHistory();
   });
 
   function closeSidebarFn() {
@@ -54,6 +59,63 @@ document.addEventListener('DOMContentLoaded', () => {
   overlay.addEventListener('click', () => {
     closeSidebarFn();
     closeSettingsFn();
+  });
+
+  // タブ切り替え
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  // 履歴表示
+  function renderHistory() {
+    const history = Settings.getHistory();
+    if (history.length === 0) {
+      historyEl.innerHTML = '<div class="history-empty">履歴がありません</div>';
+      return;
+    }
+    
+    historyEl.innerHTML = history.map(h => {
+      const progress = Settings.getProgress(h.id);
+      const progressText = progress.chapterIndex > 0 ? `${progress.chapterIndex + 1}話まで読了` : '未読';
+      return `
+        <div class="history-item" data-ncode="${h.id}">
+          <div class="history-info">
+            <div class="history-title">${escapeHtml(h.title)}</div>
+            <div class="history-author">${escapeHtml(h.author)}</div>
+            <div class="history-progress">${progressText}</div>
+          </div>
+          <button class="history-delete" data-ncode="${h.id}">✕</button>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  // 履歴クリック
+  historyEl.addEventListener('click', (e) => {
+    const deleteBtn = e.target.closest('.history-delete');
+    if (deleteBtn) {
+      e.stopPropagation();
+      Settings.removeHistory(deleteBtn.dataset.ncode);
+      renderHistory();
+      return;
+    }
+    
+    const item = e.target.closest('.history-item');
+    if (item) {
+      reader.loadFromNarou(item.dataset.ncode);
+      closeSidebarFn();
+    }
   });
 
   // 目次
