@@ -54,31 +54,54 @@ async function fetchNovelInfo(ncode) {
 }
 
 async function fetchTableOfContents(ncode) {
-  const tocUrl = `https://ncode.syosetu.com/${ncode}/`;
-  const data = await httpsGet(tocUrl);
-  
   const chapters = [];
   const sections = [];
+  let page = 1;
+  let hasMore = true;
   
-  const chapterTitleRegex = /<div class="chapter_title">([^<]+)<\/div>/g;
-  let chapterMatch;
-  while ((chapterMatch = chapterTitleRegex.exec(data)) !== null) {
-    sections.push({ title: chapterMatch[1].trim(), index: chapterMatch.index });
-  }
-  
-  const regex = /<a href="\/[^/]+\/(\d+)\/"[^>]*>([^<]+)<\/a>/g;
-  let match;
-  while ((match = regex.exec(data)) !== null) {
-    const num = parseInt(match[1]);
-    if (!chapters.find(c => c.number === num) && match[2].trim().length > 0) {
-      let sectionTitle = null;
-      for (let i = sections.length - 1; i >= 0; i--) {
-        if (sections[i].index < match.index) {
-          sectionTitle = sections[i].title;
-          break;
-        }
+  while (hasMore) {
+    const tocUrl = page === 1 
+      ? `https://ncode.syosetu.com/${ncode}/`
+      : `https://ncode.syosetu.com/${ncode}/?p=${page}`;
+    
+    const data = await httpsGet(tocUrl);
+    
+    // 章タイトルを抽出
+    const chapterTitleRegex = /<div class="chapter_title">([^<]+)<\/div>/g;
+    let chapterMatch;
+    while ((chapterMatch = chapterTitleRegex.exec(data)) !== null) {
+      const title = chapterMatch[1].trim();
+      if (!sections.find(s => s.title === title)) {
+        sections.push({ title: title, index: chapterMatch.index });
       }
-      chapters.push({ number: num, title: match[2].trim(), section: sectionTitle });
+    }
+    
+    // 各話のリンクを抽出
+    const regex = /<a href="\/[^/]+\/(\d+)\/"[^>]*>([^<]+)<\/a>/g;
+    let match;
+    let foundInPage = 0;
+    while ((match = regex.exec(data)) !== null) {
+      const num = parseInt(match[1]);
+      if (!chapters.find(c => c.number === num) && match[2].trim().length > 0) {
+        let sectionTitle = null;
+        for (let i = sections.length - 1; i >= 0; i--) {
+          if (sections[i].index < match.index) {
+            sectionTitle = sections[i].title;
+            break;
+          }
+        }
+        chapters.push({ number: num, title: match[2].trim(), section: sectionTitle });
+        foundInPage++;
+      }
+    }
+    
+    // 次のページがあるかチェック
+    const nextPageMatch = data.match(/<a[^>]*href="[^"]*\?p=(\d+)"[^>]*>次へ/);
+    if (nextPageMatch && foundInPage > 0) {
+      page++;
+      if (page > 20) hasMore = false;
+    } else {
+      hasMore = false;
     }
   }
 

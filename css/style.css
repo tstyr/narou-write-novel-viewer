@@ -406,6 +406,12 @@ body {
   opacity: 0.7;
 }
 
+.chapter-nav-group {
+  display: flex;
+  gap: 0.3rem;
+  margin-left: 0.5rem;
+}
+
 /* 設定パネル */
 #settings-panel {
   position: fixed;

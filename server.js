@@ -165,34 +165,39 @@ async function fetchNovelInfo(ncode) {
   throw new Error('小説が見つかりません');
 }
 
-// 目次を取得
+// 目次を取得（全ページ対応）
 async function fetchTableOfContents(ncode) {
-  const tocUrl = `https://ncode.syosetu.com/${ncode}/`;
-  console.log(`Fetching TOC: ${tocUrl}`);
-  
-  const data = await httpsGet(tocUrl);
-  console.log(`TOC received ${data.length} bytes`);
-  
   const chapters = [];
   const sections = [];
+  let page = 1;
+  let hasMore = true;
   
-  // 章タイトルを抽出
-  const chapterTitleRegex = /<div class="chapter_title">([^<]+)<\/div>/g;
-  let chapterMatch;
-  while ((chapterMatch = chapterTitleRegex.exec(data)) !== null) {
-    sections.push({
-      title: chapterMatch[1].trim(),
-      index: chapterMatch.index
-    });
-  }
-  
-  // 各話のリンクを抽出
-  const patterns = [
-    /<a href="\/[^/]+\/(\d+)\/"[^>]*>([^<]+)<\/a>/g
-  ];
-  
-  for (const regex of patterns) {
+  while (hasMore) {
+    const tocUrl = page === 1 
+      ? `https://ncode.syosetu.com/${ncode}/`
+      : `https://ncode.syosetu.com/${ncode}/?p=${page}`;
+    console.log(`Fetching TOC page ${page}: ${tocUrl}`);
+    
+    const data = await httpsGet(tocUrl);
+    console.log(`TOC page ${page} received ${data.length} bytes`);
+    
+    // 章タイトルを抽出
+    const chapterTitleRegex = /<div class="chapter_title">([^<]+)<\/div>/g;
+    let chapterMatch;
+    while ((chapterMatch = chapterTitleRegex.exec(data)) !== null) {
+      const title = chapterMatch[1].trim();
+      if (!sections.find(s => s.title === title)) {
+        sections.push({
+          title: title,
+          index: chapterMatch.index
+        });
+      }
+    }
+    
+    // 各話のリンクを抽出
+    const regex = /<a href="\/[^/]+\/(\d+)\/"[^>]*>([^<]+)<\/a>/g;
     let match;
+    let foundInPage = 0;
     while ((match = regex.exec(data)) !== null) {
       const num = parseInt(match[1]);
       // 重複チェック & 数字のみのリンクを除外
@@ -209,7 +214,21 @@ async function fetchTableOfContents(ncode) {
           title: match[2].trim(),
           section: sectionTitle
         });
+        foundInPage++;
       }
+    }
+    
+    // 次のページがあるかチェック
+    const nextPageMatch = data.match(/<a[^>]*href="[^"]*\?p=(\d+)"[^>]*>次へ/);
+    if (nextPageMatch && foundInPage > 0) {
+      page++;
+      // 安全のため最大20ページまで
+      if (page > 20) {
+        console.log('Max pages reached');
+        hasMore = false;
+      }
+    } else {
+      hasMore = false;
     }
   }
 
@@ -220,7 +239,7 @@ async function fetchTableOfContents(ncode) {
     chapters.push({ number: 1, title: '本編', section: null });
   }
 
-  console.log(`Found ${chapters.length} chapters`);
+  console.log(`Found ${chapters.length} chapters total`);
   return { chapters, sections: [...new Set(sections.map(s => s.title))] };
 }
 
