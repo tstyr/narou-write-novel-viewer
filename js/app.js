@@ -271,4 +271,10 @@ document.addEventListener('DOMContentLoaded', () => {
       reader.goToChapter(reader.currentChapter + 1, 0);
     }
   });
+
+  // オフラインダウンロードボタン
+  const downloadBtn = document.getElementById('download-btn');
+  downloadBtn.addEventListener('click', () => {
+    reader.downloadForOffline();
+  });
 });

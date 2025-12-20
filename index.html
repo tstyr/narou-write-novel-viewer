@@ -32,6 +32,14 @@
         <button id="close-sidebar" class="icon-btn">✕</button>
       </div>
       <div id="novel-info"></div>
+      <div id="download-section" class="hidden">
+        <button id="download-btn" class="download-btn">📥 オフライン用にダウンロード</button>
+        <div id="download-progress" class="hidden">
+          <div class="progress-bar"><div class="progress-fill"></div></div>
+          <span class="progress-text">0%</span>
+        </div>
+        <span id="offline-status"></span>
+      </div>
       
       <div class="sidebar-tabs">
         <button class="tab-btn active" data-tab="toc">目次</button>
@@ -66,6 +74,7 @@
         <div class="tap-area next" id="tap-next"><span class="nav-arrow">›</span></div>
       </div>
       <div id="page-info">
+        <span id="remaining-time"></span>
         <span id="chapter-info"></span>
         <span class="page-numbers"><span id="current-page">-</span> / <span id="total-pages">-</span></span>
         <span class="chapter-nav-group">

@@ -3,10 +3,12 @@ class NovelReader {
     this.novel = null;
     this.currentChapter = 0;
     this.pages = [];
-    this.currentSpread = 0; // 見開きのインデックス
+    this.currentSpread = 0;
     this.chapterData = null;
     this.settings = Settings.get();
     this.isMobile = window.innerWidth <= 768;
+    this.totalChars = 0; // 全体の文字数
+    this.chapterChars = []; // 各章の文字数
     
     this.elements = {
       book: document.getElementById('book'),
@@ -18,13 +20,21 @@ class NovelReader {
       chapterInfo: document.getElementById('chapter-info'),
       currentPageEl: document.getElementById('current-page'),
       totalPagesEl: document.getElementById('total-pages'),
-      loading: document.getElementById('loading')
+      loading: document.getElementById('loading'),
+      remainingTime: document.getElementById('remaining-time'),
+      downloadSection: document.getElementById('download-section'),
+      downloadBtn: document.getElementById('download-btn'),
+      downloadProgress: document.getElementById('download-progress'),
+      offlineStatus: document.getElementById('offline-status')
     };
     
     this.touchStartX = 0;
   }
 
-  showLoading() { this.elements.loading.classList.remove('hidden'); }
+  showLoading(text = '読み込み中...') { 
+    this.elements.loading.querySelector('p').textContent = text;
+    this.elements.loading.classList.remove('hidden'); 
+  }
   hideLoading() { this.elements.loading.classList.add('hidden'); }
 
   extractNcode(input) {
@@ -44,16 +54,24 @@ class NovelReader {
 
     this.showLoading();
     try {
-      const res = await fetch(`/api/novel?ncode=${ncode}`);
-      if (!res.ok) throw new Error((await res.json()).error);
+      // まずオフラインデータを確認
+      let offlineNovel = await OfflineStorage.getNovel(ncode);
       
-      this.novel = await res.json();
+      if (offlineNovel) {
+        this.novel = offlineNovel;
+      } else {
+        const res = await fetch(`/api/novel?ncode=${ncode}`);
+        if (!res.ok) throw new Error((await res.json()).error);
+        this.novel = await res.json();
+      }
+      
       this.elements.title.textContent = this.novel.title;
       this.buildToc();
       this.showNovelInfo();
+      this.setupDownloadSection();
       
       // 履歴に追加
-      Settings.addHistory(this.novel.id, this.novel.title, this.novel.author);
+      Settings.addHistory(this.novel.id, this.novel.title, this.novel.author, this.totalChars);
       
       const progress = Settings.getProgress(ncode);
       await this.goToChapter(progress.chapterIndex || 0, progress.pageIndex || 0);
@@ -61,6 +79,84 @@ class NovelReader {
       alert('読み込みに失敗しました: ' + e.message);
     } finally {
       this.hideLoading();
+    }
+  }
+
+  async setupDownloadSection() {
+    this.elements.downloadSection.classList.remove('hidden');
+    
+    const isDownloaded = await OfflineStorage.isNovelDownloaded(this.novel.id);
+    if (isDownloaded) {
+      this.elements.downloadBtn.textContent = '✓ ダウンロード済み';
+      this.elements.downloadBtn.disabled = true;
+      this.elements.offlineStatus.textContent = 'オフラインで読めます';
+    } else {
+      this.elements.downloadBtn.textContent = '📥 オフライン用にダウンロード';
+      this.elements.downloadBtn.disabled = false;
+      this.elements.offlineStatus.textContent = '';
+    }
+  }
+
+  async downloadForOffline() {
+    if (!this.novel) return;
+    
+    const btn = this.elements.downloadBtn;
+    const progressEl = this.elements.downloadProgress;
+    const progressFill = progressEl.querySelector('.progress-fill');
+    const progressText = progressEl.querySelector('.progress-text');
+    
+    btn.disabled = true;
+    btn.textContent = 'ダウンロード中...';
+    progressEl.classList.remove('hidden');
+    
+    try {
+      // 小説情報を保存
+      await OfflineStorage.saveNovel(this.novel);
+      
+      let totalChars = 0;
+      const chapterChars = [];
+      
+      for (let i = 0; i < this.novel.chapters.length; i++) {
+        const chapter = this.novel.chapters[i];
+        const percent = Math.round((i / this.novel.chapters.length) * 100);
+        progressFill.style.width = `${percent}%`;
+        progressText.textContent = `${percent}% (${i}/${this.novel.chapters.length})`;
+        
+        // 既にダウンロード済みか確認
+        let chapterData = await OfflineStorage.getChapter(this.novel.id, chapter.number);
+        
+        if (!chapterData) {
+          const res = await fetch(`/api/chapter?ncode=${this.novel.id}&chapter=${chapter.number}`);
+          if (res.ok) {
+            chapterData = await res.json();
+            await OfflineStorage.saveChapter(this.novel.id, chapter.number, chapterData);
+          }
+          // レート制限対策
+          await new Promise(r => setTimeout(r, 300));
+        }
+        
+        if (chapterData) {
+          const chars = chapterData.content.join('').length;
+          totalChars += chars;
+          chapterChars.push(chars);
+        }
+      }
+      
+      this.totalChars = totalChars;
+      this.chapterChars = chapterChars;
+      Settings.updateHistoryChars(this.novel.id, totalChars);
+      
+      progressFill.style.width = '100%';
+      progressText.textContent = '完了!';
+      btn.textContent = '✓ ダウンロード済み';
+      this.elements.offlineStatus.textContent = 'オフラインで読めます';
+      
+      setTimeout(() => progressEl.classList.add('hidden'), 2000);
+    } catch (e) {
+      alert('ダウンロードに失敗しました: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = '📥 オフライン用にダウンロード';
+      progressEl.classList.add('hidden');
     }
   }
 
@@ -92,10 +188,22 @@ class NovelReader {
     const chapter = this.novel.chapters[index];
     
     try {
-      const res = await fetch(`/api/chapter?ncode=${this.novel.id}&chapter=${chapter.number}`);
-      if (!res.ok) throw new Error((await res.json()).error);
+      // まずオフラインデータを確認
+      let chapterData = await OfflineStorage.getChapter(this.novel.id, chapter.number);
       
-      this.chapterData = await res.json();
+      if (!chapterData) {
+        const res = await fetch(`/api/chapter?ncode=${this.novel.id}&chapter=${chapter.number}`);
+        if (!res.ok) throw new Error((await res.json()).error);
+        chapterData = await res.json();
+      }
+      
+      this.chapterData = chapterData;
+      
+      // 文字数を記録
+      if (!this.chapterChars[index]) {
+        this.chapterChars[index] = chapterData.content.join('').length;
+      }
+      
       this.paginate();
       
       // startPageから見開きを計算
@@ -108,6 +216,7 @@ class NovelReader {
       this.renderSpread();
       this.updateTocActive();
       this.updateChapterInfo();
+      this.updateRemainingTime();
     } catch (e) {
       this.elements.contentLeft.innerHTML = `<p>読み込み失敗: ${e.message}</p>`;
       this.elements.contentRight.innerHTML = '';
@@ -221,11 +330,50 @@ class NovelReader {
       
       Settings.saveProgress(this.novel?.id, this.currentChapter, spreadIndex);
     }
+    
+    this.updateRemainingTime();
   }
 
   updateChapterInfo() {
     if (!this.novel) return;
     this.elements.chapterInfo.textContent = `${this.currentChapter + 1}/${this.novel.chapters.length}話 | `;
+  }
+
+  updateRemainingTime() {
+    if (!this.novel || !this.chapterData) {
+      this.elements.remainingTime.textContent = '';
+      return;
+    }
+    
+    const readingSpeed = this.settings.readingSpeed || 500; // 文字/分
+    
+    // 現在の章の残り文字数を計算
+    const currentChapterChars = this.chapterData.content.join('').length;
+    const currentPageRatio = this.isMobile 
+      ? (this.currentSpread + 1) / this.pages.length
+      : (this.currentSpread + 1) / Math.ceil(this.pages.length / 2);
+    const remainingInChapter = Math.round(currentChapterChars * (1 - currentPageRatio));
+    
+    // 残りの章の文字数を推定
+    let remainingChars = remainingInChapter;
+    const avgCharsPerChapter = this.chapterChars.length > 0 
+      ? this.chapterChars.reduce((a, b) => a + b, 0) / this.chapterChars.length
+      : currentChapterChars;
+    
+    for (let i = this.currentChapter + 1; i < this.novel.chapters.length; i++) {
+      remainingChars += this.chapterChars[i] || avgCharsPerChapter;
+    }
+    
+    // 残り時間を計算
+    const remainingMinutes = Math.ceil(remainingChars / readingSpeed);
+    
+    if (remainingMinutes < 60) {
+      this.elements.remainingTime.textContent = `残り約${remainingMinutes}分`;
+    } else {
+      const hours = Math.floor(remainingMinutes / 60);
+      const mins = remainingMinutes % 60;
+      this.elements.remainingTime.textContent = `残り約${hours}時間${mins > 0 ? mins + '分' : ''}`;
+    }
   }
 
   updateTocActive() {

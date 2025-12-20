@@ -154,6 +154,66 @@ body {
 #novel-info .info-title { font-weight: bold; }
 #novel-info .info-author { color: var(--accent-color); }
 
+/* ダウンロードセクション */
+#download-section {
+  padding: 0.5rem 0.8rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.download-btn {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.download-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+#download-progress {
+  margin-top: 0.5rem;
+}
+
+.progress-bar {
+  height: 6px;
+  background: var(--border-color);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--accent-color);
+  width: 0%;
+  transition: width 0.3s;
+}
+
+.progress-text {
+  font-size: 0.7rem;
+  display: block;
+  text-align: center;
+  margin-top: 0.2rem;
+}
+
+#offline-status {
+  display: block;
+  font-size: 0.7rem;
+  margin-top: 0.3rem;
+  color: var(--accent-color);
+}
+
+/* 残り時間 */
+#remaining-time {
+  font-size: 0.65rem;
+  opacity: 0.8;
+}
+
 /* サイドバータブ */
 .sidebar-tabs {
   display: flex;
