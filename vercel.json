@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/novel", "destination": "/api/novel" },
+    { "source": "/api/chapter", "destination": "/api/chapter" }
+  ]
+}

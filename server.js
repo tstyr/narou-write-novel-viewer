@@ -19,70 +19,93 @@ const mimeTypes = {
 
 const NAROU_API = 'https://api.syosetu.com/novelapi/api/';
 
-// HTTPSリクエスト（User-Agent付き、gzip対応）
+// HTTPSリクエスト
 function httpsGet(targetUrl) {
   return new Promise((resolve, reject) => {
+    const parsedUrl = new URL(targetUrl);
     const options = {
+      hostname: parsedUrl.hostname,
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'ja,en-US;q=0.7,en;q=0.3',
+        'Accept-Encoding': 'gzip, deflate',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1'
       }
     };
 
-    https.get(targetUrl, options, (res) => {
+    const req = https.request(options, (res) => {
+      console.log(`Status: ${res.statusCode} for ${targetUrl}`);
+      
       // リダイレクト対応
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        httpsGet(res.headers.location).then(resolve).catch(reject);
+        let redirectUrl = res.headers.location;
+        if (!redirectUrl.startsWith('http')) {
+          redirectUrl = `https://${parsedUrl.hostname}${redirectUrl}`;
+        }
+        httpsGet(redirectUrl).then(resolve).catch(reject);
         return;
       }
 
       let stream = res;
-      if (res.headers['content-encoding'] === 'gzip') {
+      const encoding = res.headers['content-encoding'];
+      if (encoding === 'gzip') {
         stream = res.pipe(zlib.createGunzip());
-      } else if (res.headers['content-encoding'] === 'deflate') {
+      } else if (encoding === 'deflate') {
         stream = res.pipe(zlib.createInflate());
-      } else if (res.headers['content-encoding'] === 'br') {
-        stream = res.pipe(zlib.createBrotliDecompress());
       }
 
-      let data = '';
-      stream.on('data', chunk => data += chunk);
-      stream.on('end', () => resolve(data));
+      const chunks = [];
+      stream.on('data', chunk => chunks.push(chunk));
+      stream.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        resolve(buffer.toString('utf-8'));
+      });
       stream.on('error', reject);
-    }).on('error', reject);
+    });
+
+    req.on('error', reject);
+    req.end();
   });
 }
 
 // 小説本文を取得
 async function fetchChapterContent(ncode, chapterNum) {
   const chapterUrl = `https://ncode.syosetu.com/${ncode}/${chapterNum}/`;
-  console.log(`Fetching: ${chapterUrl}`);
+  console.log(`Fetching chapter: ${chapterUrl}`);
   
   const data = await httpsGet(chapterUrl);
+  console.log(`Received ${data.length} bytes`);
   
-  // タイトル抽出（複数パターン対応）
+  // エラーページチェック
+  if (data.includes('The page could not be found') || data.includes('ページが見つかりません')) {
+    throw new Error('ページが見つかりません');
+  }
+  
+  // タイトル抽出
   let title = `第${chapterNum}話`;
   const titlePatterns = [
     /<p class="novel_subtitle">([^<]+)<\/p>/,
-    /<h1 class="p-novel__title[^"]*">([^<]+)<\/h1>/,
-    /<title>([^<]+)<\/title>/
+    /<h1[^>]*class="[^"]*novel[^"]*title[^"]*"[^>]*>([^<]+)<\/h1>/i,
+    /<title>([^<|]+)/
   ];
   for (const pattern of titlePatterns) {
     const match = data.match(pattern);
     if (match) {
-      title = match[1].trim().replace(/ - 小説家になろう$/, '');
+      title = match[1].trim();
       break;
     }
   }
 
-  // 本文抽出（複数パターン対応）
+  // 本文抽出
   let content = '';
   const contentPatterns = [
-    /<div id="novel_honbun"[^>]*>([\s\S]*?)<\/div>/,
+    /<div id="novel_honbun"[^>]*>([\s\S]*?)<\/div>\s*(?:<div|<script|$)/,
     /<div class="p-novel__body"[^>]*>([\s\S]*?)<\/div>/,
-    /<div class="novel_view"[^>]*>([\s\S]*?)<\/div>/
+    /<div[^>]*class="[^"]*novel_view[^"]*"[^>]*>([\s\S]*?)<\/div>/
   ];
   
   for (const pattern of contentPatterns) {
@@ -94,8 +117,11 @@ async function fetchChapterContent(ncode, chapterNum) {
   }
 
   if (!content) {
-    console.log('Content not found. HTML sample:', data.substring(0, 2000));
-    throw new Error('本文が見つかりません');
+    // デバッグ用
+    console.log('=== HTML Sample ===');
+    console.log(data.substring(0, 3000));
+    console.log('===================');
+    throw new Error('本文が見つかりません。サイト構造が変更された可能性があります。');
   }
 
   // HTMLタグを処理
@@ -110,7 +136,7 @@ async function fetchChapterContent(ncode, chapterNum) {
   content = content.replace(/&gt;/g, '>');
   content = content.replace(/&amp;/g, '&');
   content = content.replace(/&quot;/g, '"');
-  content = content.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(code));
+  content = content.replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code)));
 
   const paragraphs = content.split('\n')
     .map(p => p.trim())
@@ -119,16 +145,22 @@ async function fetchChapterContent(ncode, chapterNum) {
   return { title, content: paragraphs };
 }
 
-// 小説情報を取得
+// 小説情報を取得（公式API使用）
 async function fetchNovelInfo(ncode) {
   const apiUrl = `${NAROU_API}?of=t-w-s-ga&ncode=${ncode}&out=json`;
   console.log(`Fetching info: ${apiUrl}`);
   
   const data = await httpsGet(apiUrl);
-  const json = JSON.parse(data);
+  console.log(`API response: ${data.substring(0, 200)}`);
   
-  if (json.length > 1) {
-    return json[1];
+  try {
+    const json = JSON.parse(data);
+    if (json.length > 1) {
+      return json[1];
+    }
+  } catch (e) {
+    console.error('JSON parse error:', e.message);
+    console.log('Raw data:', data.substring(0, 500));
   }
   throw new Error('小説が見つかりません');
 }
@@ -139,10 +171,12 @@ async function fetchTableOfContents(ncode) {
   console.log(`Fetching TOC: ${tocUrl}`);
   
   const data = await httpsGet(tocUrl);
+  console.log(`TOC received ${data.length} bytes`);
+  
   const chapters = [];
   const sections = [];
   
-  // 章（セクション）タイトルを抽出
+  // 章タイトルを抽出
   const chapterTitleRegex = /<div class="chapter_title">([^<]+)<\/div>/g;
   let chapterMatch;
   while ((chapterMatch = chapterTitleRegex.exec(data)) !== null) {
@@ -152,19 +186,17 @@ async function fetchTableOfContents(ncode) {
     });
   }
   
-  // 各話のリンクを抽出（複数パターン）
+  // 各話のリンクを抽出
   const patterns = [
-    /<a href="\/[^/]+\/(\d+)\/"[^>]*class="[^"]*subtitle[^"]*"[^>]*>([^<]+)<\/a>/g,
-    /<a href="\/[^/]+\/(\d+)\/"[^>]*>([^<]+)<\/a>/g,
-    /<dd class="subtitle">\s*<a href="\/[^/]+\/(\d+)\/">([^<]+)<\/a>/g
+    /<a href="\/[^/]+\/(\d+)\/"[^>]*>([^<]+)<\/a>/g
   ];
   
   for (const regex of patterns) {
     let match;
     while ((match = regex.exec(data)) !== null) {
       const num = parseInt(match[1]);
-      if (!chapters.find(c => c.number === num)) {
-        // この話がどの章に属するか判定
+      // 重複チェック & 数字のみのリンクを除外
+      if (!chapters.find(c => c.number === num) && match[2].trim().length > 0) {
         let sectionTitle = null;
         for (let i = sections.length - 1; i >= 0; i--) {
           if (sections[i].index < match.index) {
@@ -181,7 +213,6 @@ async function fetchTableOfContents(ncode) {
     }
   }
 
-  // 番号順にソート
   chapters.sort((a, b) => a.number - b.number);
 
   // 短編の場合
@@ -189,6 +220,7 @@ async function fetchTableOfContents(ncode) {
     chapters.push({ number: 1, title: '本編', section: null });
   }
 
+  console.log(`Found ${chapters.length} chapters`);
   return { chapters, sections: [...new Set(sections.map(s => s.title))] };
 }
 
@@ -287,4 +319,5 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`サーバー起動: http://localhost:${PORT}`);
+  console.log('なろうビューワーを開いてください');
 });
