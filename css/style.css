@@ -220,13 +220,16 @@ body {
   height: 100%;
   padding: 1rem;
   overflow: hidden;
+  display: flex;
+  justify-content: center;
 }
 
 #content {
-  width: 100%;
+  max-width: 800px;
   height: 100%;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  padding: 0 1rem;
 }
 
 /* 縦書き */
@@ -235,6 +238,9 @@ body {
   text-orientation: mixed;
   overflow-x: auto;
   overflow-y: hidden;
+  max-width: none;
+  width: 100%;
+  max-height: 100%;
 }
 
 /* 横書き */
@@ -259,13 +265,14 @@ body {
   text-align: center;
 }
 
-/* ナビエリア（タップ用） */
+/* ナビエリア（タップ用） - 章ナビより下に */
 .nav-area {
   position: absolute;
   top: 0;
   height: 100%;
-  width: 25%;
-  z-index: 10;
+  width: 20%;
+  z-index: 5;
+  pointer-events: auto;
 }
 
 .nav-area.prev { left: 0; }
@@ -436,21 +443,34 @@ select {
   padding: 1rem 0;
   margin-top: 1rem;
   border-top: 1px solid var(--border-color);
+  position: relative;
+  z-index: 20;
 }
 
 .chapter-nav button {
   flex: 1;
-  padding: 0.6rem;
+  padding: 0.8rem 1rem;
   background: var(--accent-color);
   color: #fff;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chapter-nav button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.chapter-nav button:active:not(:disabled) {
+  opacity: 0.8;
 }
 
 .chapter-nav button:disabled {
   opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* スマホ */
