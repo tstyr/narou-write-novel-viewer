@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const overlay = document.getElementById('overlay');
   const readingModeBtn = document.getElementById('reading-mode-btn');
   const themeBtn = document.getElementById('theme-btn');
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
   const settingsBtn = document.getElementById('settings-btn');
   const settingsPanel = document.getElementById('settings-panel');
   const closeSettings = document.getElementById('close-settings');
@@ -17,12 +18,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const fontFamilySelect = document.getElementById('font-family');
   const toc = document.getElementById('toc');
   const book = document.getElementById('book');
+  const header = document.getElementById('header');
   const novelUrl = document.getElementById('novel-url');
   const loadBtn = document.getElementById('load-btn');
   const navPrev = document.getElementById('nav-prev');
   const navNext = document.getElementById('nav-next');
+  const app = document.getElementById('app');
 
   let settings = Settings.get();
+  let headerTimeout;
   
   // 初期設定適用
   applyTheme(settings.theme);
@@ -90,6 +94,50 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.dataset.theme = theme;
     themeBtn.textContent = Settings.getThemeIcon(theme);
   }
+
+  // 全画面
+  fullscreenBtn.addEventListener('click', toggleFullscreen);
+  
+  function toggleFullscreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      }
+      app.classList.add('fullscreen');
+      fullscreenBtn.textContent = '⛶';
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      }
+      app.classList.remove('fullscreen');
+      fullscreenBtn.textContent = '⛶';
+    }
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) {
+      app.classList.remove('fullscreen');
+    }
+  });
+
+  // 全画面時のヘッダー表示
+  document.addEventListener('mousemove', (e) => {
+    if (app.classList.contains('fullscreen')) {
+      if (e.clientY < 60) {
+        header.classList.add('show-header');
+        clearTimeout(headerTimeout);
+      } else {
+        headerTimeout = setTimeout(() => {
+          header.classList.remove('show-header');
+        }, 2000);
+      }
+    }
+  });
 
   // 設定パネル
   settingsBtn.addEventListener('click', () => {
@@ -159,6 +207,15 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         reader.prevPage();
         break;
+      case 'f':
+      case 'F':
+        toggleFullscreen();
+        break;
+      case 'Escape':
+        if (app.classList.contains('fullscreen')) {
+          app.classList.remove('fullscreen');
+        }
+        break;
     }
   });
 
@@ -166,10 +223,25 @@ document.addEventListener('DOMContentLoaded', () => {
   book.addEventListener('touchstart', (e) => reader.handleTouchStart(e), { passive: true });
   book.addEventListener('touchend', (e) => reader.handleTouchEnd(e), { passive: true });
 
+  // ダブルタップで全画面（スマホ用）
+  let lastTap = 0;
+  book.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    if (now - lastTap < 300) {
+      toggleFullscreen();
+    }
+    lastTap = now;
+  });
+
   // リサイズ
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => reader.onResize(), 200);
+  });
+
+  // 画面回転
+  window.addEventListener('orientationchange', () => {
+    setTimeout(() => reader.onResize(), 300);
   });
 });
