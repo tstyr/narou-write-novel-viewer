@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: narou-viewer
+    runtime: node
+    buildCommand: ""
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
