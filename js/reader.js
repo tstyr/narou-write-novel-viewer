@@ -207,11 +207,10 @@ class NovelReader {
         this.elements.contentRight.innerHTML = this.pages[spreadIndex + 1] || '';
       }
       
-      // ページ番号表示
-      const displayPage = spreadIndex + 1;
+      // ページ番号表示（見開き番号）
       const totalSpreads = Math.ceil(this.pages.length / 2);
-      this.elements.currentPageEl.textContent = `${displayPage}-${Math.min(displayPage + 1, this.pages.length)}`;
-      this.elements.totalPagesEl.textContent = this.pages.length;
+      this.elements.currentPageEl.textContent = this.currentSpread + 1;
+      this.elements.totalPagesEl.textContent = totalSpreads;
       
       Settings.saveProgress(this.novel?.id, this.currentChapter, spreadIndex);
     }

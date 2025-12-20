@@ -202,11 +202,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const isVertical = reader.settings.readingMode === 'vertical';
     
     switch (e.key) {
-      case 'ArrowRight':
-        isVertical ? reader.prevPage() : reader.nextPage();
-        break;
       case 'ArrowLeft':
+        // 縦書き: 左矢印で次へ進む、横書き: 左矢印で前へ戻る
         isVertical ? reader.nextPage() : reader.prevPage();
+        break;
+      case 'ArrowRight':
+        // 縦書き: 右矢印で前へ戻る、横書き: 右矢印で次へ進む
+        isVertical ? reader.prevPage() : reader.nextPage();
         break;
       case 'ArrowDown':
       case 'PageDown':
