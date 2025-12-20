@@ -5,8 +5,5 @@
   "scripts": {
     "start": "node server.js"
   },
-  "dependencies": {
-    "@sparticuz/chromium-min": "^123.0.0",
-    "puppeteer-core": "^22.0.0"
-  }
+  "dependencies": {}
 }

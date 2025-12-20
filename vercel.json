@@ -1,12 +1,12 @@
 {
   "functions": {
     "api/chapter.js": {
-      "memory": 1024,
-      "maxDuration": 60
+      "memory": 256,
+      "maxDuration": 30
+    },
+    "api/novel.js": {
+      "memory": 256,
+      "maxDuration": 30
     }
-  },
-  "rewrites": [
-    { "source": "/api/novel", "destination": "/api/novel" },
-    { "source": "/api/chapter", "destination": "/api/chapter" }
-  ]
+  }
 }
