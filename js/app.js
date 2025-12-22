@@ -277,4 +277,48 @@ document.addEventListener('DOMContentLoaded', () => {
   downloadBtn.addEventListener('click', () => {
     reader.downloadForOffline();
   });
+
+  // ログイン関連
+  const loginBtn = document.getElementById('login-btn');
+  const googleLoginBtn = document.getElementById('google-login-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const syncBtn = document.getElementById('sync-btn');
+
+  loginBtn.addEventListener('click', () => {
+    sidebar.classList.add('visible');
+    overlay.classList.remove('hidden');
+  });
+
+  googleLoginBtn.addEventListener('click', async () => {
+    await CloudSync.loginWithGoogle();
+    renderHistory();
+  });
+
+  logoutBtn.addEventListener('click', async () => {
+    await CloudSync.logout();
+  });
+
+  syncBtn.addEventListener('click', async () => {
+    syncBtn.textContent = '⏳';
+    const synced = await CloudSync.sync();
+    syncBtn.textContent = synced ? '✓' : '🔄';
+    if (synced) {
+      renderHistory();
+      setTimeout(() => { syncBtn.textContent = '🔄'; }, 2000);
+    }
+  });
+
+  // ページ離脱時に同期
+  window.addEventListener('beforeunload', () => {
+    if (CloudSync.user) {
+      CloudSync.pushToCloud();
+    }
+  });
+
+  // 定期的に同期（5分ごと）
+  setInterval(() => {
+    if (CloudSync.user) {
+      CloudSync.pushToCloud();
+    }
+  }, 5 * 60 * 1000);
 });
