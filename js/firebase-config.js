@@ -1,27 +1,21 @@
 // Firebase設定
-// Firebase Consoleで取得した設定をここに入力してください
-// https://console.firebase.google.com/
-
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyANfHINxJ0e4DiVU2LirRBkcnLWFSCk_K0",
+  authDomain: "narou-viewer-f92fc.firebaseapp.com",
+  projectId: "narou-viewer-f92fc",
+  storageBucket: "narou-viewer-f92fc.firebasestorage.app",
+  messagingSenderId: "418011990178",
+  appId: "1:418011990178:web:8f674481b1925f870e2ffb",
+  measurementId: "G-RJRH30EYRR"
 };
 
 // Firebaseが利用可能かチェック
 let firebaseEnabled = false;
 
 try {
-  if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
-    firebase.initializeApp(firebaseConfig);
-    firebaseEnabled = true;
-    console.log('Firebase initialized');
-  } else {
-    console.log('Firebase not configured - sync disabled');
-  }
+  firebase.initializeApp(firebaseConfig);
+  firebaseEnabled = true;
+  console.log('Firebase initialized');
 } catch (e) {
   console.error('Firebase init error:', e);
 }
