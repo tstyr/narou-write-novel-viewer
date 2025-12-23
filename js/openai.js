@@ -42,7 +42,14 @@ const ChatGPTAI = {
     // システムメッセージ
     this.context.push({
       role: 'system',
-      content: `あなたは小説「${novel.title}」（作者: ${novel.author}）の読書アシスタントです。読者の質問に答えたり、内容を要約したり、考察を手伝ってください。日本語で回答してください。`
+      content: `あなたは小説「${novel.title}」（作者: ${novel.author}）の読書アシスタントです。
+
+重要なルール：
+- 提供された小説の内容のみに基づいて回答してください
+- 知らない情報や提供されていない情報については「その情報は提供されていません」と正直に答えてください
+- 絶対に創作や推測で情報を補完しないでください
+- 登場人物や設定について聞かれた場合、提供されたテキストに明記されている情報のみを答えてください
+- 日本語で回答してください`
     });
 
     // 現在読んでいる章の前後を含める
@@ -94,7 +101,7 @@ const ChatGPTAI = {
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
           messages,
-          temperature: 0.7,
+          temperature: 0.3,
           max_tokens: 2048
         })
       });
