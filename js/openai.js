@@ -1,20 +1,20 @@
-// ChatGPT (OpenAI) AI機能
+// Groq AI機能
 const ChatGPTAI = {
   apiKey: null,
   context: [],
   maxContextChapters: 5,
 
   init() {
-    this.apiKey = localStorage.getItem('openaiApiKey') || null;
+    this.apiKey = localStorage.getItem('groqApiKey') || null;
     this.updateUI();
   },
 
   setApiKey(key) {
     this.apiKey = key;
     if (key) {
-      localStorage.setItem('openaiApiKey', key);
+      localStorage.setItem('groqApiKey', key);
     } else {
-      localStorage.removeItem('openaiApiKey');
+      localStorage.removeItem('groqApiKey');
     }
     this.updateUI();
   },
@@ -42,7 +42,7 @@ const ChatGPTAI = {
     // システムメッセージ
     this.context.push({
       role: 'system',
-      content: `あなたは小説「${novel.title}」（作者: ${novel.author}）の読書アシスタントです。読者の質問に答えたり、内容を要約したり、考察を手伝ってください。`
+      content: `あなたは小説「${novel.title}」（作者: ${novel.author}）の読書アシスタントです。読者の質問に答えたり、内容を要約したり、考察を手伝ってください。日本語で回答してください。`
     });
 
     // 現在読んでいる章の前後を含める
@@ -76,7 +76,7 @@ const ChatGPTAI = {
       return { error: 'APIキーが設定されていません' };
     }
 
-    const url = 'https://api.openai.com/v1/chat/completions';
+    const url = 'https://api.groq.com/openai/v1/chat/completions';
     
     // コンテキストに新しいメッセージを追加
     const messages = [
@@ -92,7 +92,7 @@ const ChatGPTAI = {
           'Authorization': `Bearer ${this.apiKey}`
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: 'llama-3.3-70b-versatile',
           messages,
           temperature: 0.7,
           max_tokens: 2048
@@ -124,7 +124,7 @@ const ChatGPTAI = {
 
       return { reply };
     } catch (e) {
-      console.error('OpenAI error:', e);
+      console.error('Groq error:', e);
       return { error: 'ネットワークエラー' };
     }
   },
