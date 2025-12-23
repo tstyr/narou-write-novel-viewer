@@ -5,6 +5,7 @@ const Settings = {
     fontFamily: "'Noto Serif JP', serif",
     theme: 'white',
     readingMode: 'vertical',
+    showRuby: true,
     progress: {},
     history: [],
     readingSpeed: 500 // 文字/分（デフォルト）

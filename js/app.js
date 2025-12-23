@@ -32,6 +32,10 @@ document.addEventListener('DOMContentLoaded', () => {
   fontFamilySelect.value = settings.fontFamily;
   reader.applySettings();
   
+  // ルビ設定の初期化
+  const rubyToggle = document.getElementById('ruby-toggle');
+  updateRubyToggle(settings.showRuby !== false);
+  
   // 初期履歴表示
   renderHistory();
 
@@ -185,6 +189,18 @@ document.addEventListener('DOMContentLoaded', () => {
   fontFamilySelect.addEventListener('change', (e) => {
     reader.setFontFamily(e.target.value);
   });
+
+  // ルビ表示切り替え
+  rubyToggle.addEventListener('click', () => {
+    const newValue = reader.settings.showRuby === false;
+    reader.setRubyVisible(newValue);
+    updateRubyToggle(newValue);
+  });
+
+  function updateRubyToggle(visible) {
+    rubyToggle.textContent = visible ? '表示' : '非表示';
+    rubyToggle.classList.toggle('active', visible);
+  }
 
   // タップでページめくり
   tapPrev.addEventListener('click', () => {

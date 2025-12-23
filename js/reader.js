@@ -318,16 +318,22 @@ class NovelReader {
     if (!this.chapterData) return;
 
     const isVertical = this.settings.readingMode === 'vertical';
+    const showRuby = this.settings.showRuby !== false; // デフォルトtrue
     
     // ページサイズを取得（1ページ分）
     const pageEl = document.getElementById('page-left');
     const pageWidth = pageEl.clientWidth - 48; // padding分を引く
     const pageHeight = pageEl.clientHeight - 48;
     
-    // 全コンテンツ
+    // 全コンテンツ（ルビ処理を適用）
+    const processText = (text) => showRuby ? this.processRuby(text) : this.escapeHtml(text).replace(/[|]?[^《》]*《[^》]+》/g, (m) => {
+      // ルビ非表示時は本文のみ残す
+      return m.replace(/\|?([^《》]*)《[^》]+》/, '$1');
+    });
+    
     const allContent = [
       `<h2 class="chapter-title">${this.escapeHtml(this.chapterData.title)}</h2>`,
-      ...this.chapterData.content.map(p => `<p>${this.escapeHtml(p)}</p>`)
+      ...this.chapterData.content.map(p => `<p>${processText(p)}</p>`)
     ];
     
     // テスト用div
@@ -613,5 +619,36 @@ class NovelReader {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // ルビ（読み仮名）を処理
+  processRuby(text) {
+    // なろう形式: |漢字《かんじ》 または 漢字《かんじ》
+    // まずエスケープ
+    let html = this.escapeHtml(text);
+    
+    // |漢字《ルビ》形式
+    html = html.replace(/\|([^|《》]+)《([^》]+)》/g, (match, base, ruby) => {
+      return `<ruby>${base}<rp>(</rp><rt>${ruby}</rt><rp>)</rp></ruby>`;
+    });
+    
+    // 漢字《ルビ》形式（|なし、漢字のみ）
+    html = html.replace(/([一-龯々]+)《([^》]+)》/g, (match, base, ruby) => {
+      return `<ruby>${base}<rp>(</rp><rt>${ruby}</rt><rp>)</rp></ruby>`;
+    });
+    
+    return html;
+  }
+
+  // ルビ表示/非表示を切り替え
+  setRubyVisible(visible) {
+    this.settings.showRuby = visible;
+    Settings.update('showRuby', visible);
+    
+    if (this.chapterData) {
+      this.paginate();
+      this.currentSpread = 0;
+      this.renderSpread();
+    }
   }
 }
