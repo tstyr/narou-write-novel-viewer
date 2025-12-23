@@ -1,20 +1,20 @@
-// Gemini AI機能
-const GeminiAI = {
+// ChatGPT (OpenAI) AI機能
+const ChatGPTAI = {
   apiKey: null,
   context: [],
   maxContextChapters: 5,
 
   init() {
-    this.apiKey = localStorage.getItem('geminiApiKey') || null;
+    this.apiKey = localStorage.getItem('openaiApiKey') || null;
     this.updateUI();
   },
 
   setApiKey(key) {
     this.apiKey = key;
     if (key) {
-      localStorage.setItem('geminiApiKey', key);
+      localStorage.setItem('openaiApiKey', key);
     } else {
-      localStorage.removeItem('geminiApiKey');
+      localStorage.removeItem('openaiApiKey');
     }
     this.updateUI();
   },
@@ -39,14 +39,10 @@ const GeminiAI = {
     
     if (!novel) return;
     
-    // 小説の基本情報
+    // システムメッセージ
     this.context.push({
-      role: 'user',
-      parts: [{ text: `あなたは小説「${novel.title}」（作者: ${novel.author}）の読書アシスタントです。読者の質問に答えたり、内容を要約したり、考察を手伝ってください。` }]
-    });
-    this.context.push({
-      role: 'model',
-      parts: [{ text: `はい、「${novel.title}」についてお手伝いします。内容について質問があればお聞きください。` }]
+      role: 'system',
+      content: `あなたは小説「${novel.title}」（作者: ${novel.author}）の読書アシスタントです。読者の質問に答えたり、内容を要約したり、考察を手伝ってください。`
     });
 
     // 現在読んでいる章の前後を含める
@@ -66,11 +62,11 @@ const GeminiAI = {
     if (contextText.length > 100) {
       this.context.push({
         role: 'user',
-        parts: [{ text: contextText }]
+        content: contextText
       });
       this.context.push({
-        role: 'model',
-        parts: [{ text: '内容を確認しました。質問をどうぞ。' }]
+        role: 'assistant',
+        content: '内容を確認しました。質問をどうぞ。'
       });
     }
   },
@@ -80,60 +76,65 @@ const GeminiAI = {
       return { error: 'APIキーが設定されていません' };
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${this.apiKey}`;
+    const url = 'https://api.openai.com/v1/chat/completions';
     
     // コンテキストに新しいメッセージを追加
-    const contents = [
+    const messages = [
       ...this.context,
-      { role: 'user', parts: [{ text: message }] }
+      { role: 'user', content: message }
     ];
 
     try {
       const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
         body: JSON.stringify({
-          contents,
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 2048
-          }
+          model: 'gpt-4o-mini',
+          messages,
+          temperature: 0.7,
+          max_tokens: 2048
         })
       });
 
       if (!response.ok) {
         const err = await response.json();
-        if (response.status === 400 && err.error?.message?.includes('API key')) {
+        if (response.status === 401) {
           return { error: 'APIキーが無効です' };
+        }
+        if (response.status === 429) {
+          return { error: 'レート制限に達しました。しばらく待ってから再試行してください。' };
         }
         return { error: err.error?.message || 'APIエラー' };
       }
 
       const data = await response.json();
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || '応答がありません';
+      const reply = data.choices?.[0]?.message?.content || '応答がありません';
       
       // 会話履歴に追加
-      this.context.push({ role: 'user', parts: [{ text: message }] });
-      this.context.push({ role: 'model', parts: [{ text: reply }] });
+      this.context.push({ role: 'user', content: message });
+      this.context.push({ role: 'assistant', content: reply });
       
-      // 履歴が長くなりすぎたら古いものを削除（最初の2つは保持）
+      // 履歴が長くなりすぎたら古いものを削除（システムメッセージは保持）
       if (this.context.length > 20) {
-        this.context = this.context.slice(0, 4).concat(this.context.slice(-10));
+        this.context = [this.context[0], ...this.context.slice(-10)];
       }
 
       return { reply };
     } catch (e) {
-      console.error('Gemini error:', e);
+      console.error('OpenAI error:', e);
       return { error: 'ネットワークエラー' };
     }
   },
 
   clearHistory() {
-    // 最初のコンテキスト設定は保持
-    this.context = this.context.slice(0, 4);
+    // システムメッセージは保持
+    this.context = this.context.slice(0, 1);
   }
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  GeminiAI.init();
+  ChatGPTAI.init();
 });

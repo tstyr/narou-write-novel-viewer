@@ -345,21 +345,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const aiInput = document.getElementById('ai-input');
   const aiSend = document.getElementById('ai-send');
   const aiMessages = document.getElementById('ai-messages');
-  const geminiKeyInput = document.getElementById('gemini-key');
+  const openaiKeyInput = document.getElementById('openai-key');
   const saveApiKey = document.getElementById('save-api-key');
   const clearApiKey = document.getElementById('clear-api-key');
   const openSettingsForAi = document.getElementById('open-settings-for-ai');
 
   // APIキー表示
-  if (GeminiAI.apiKey) {
-    geminiKeyInput.value = '••••••••';
+  if (ChatGPTAI.apiKey) {
+    openaiKeyInput.value = '••••••••';
   }
 
   aiBtn.addEventListener('click', () => {
     aiPanel.classList.toggle('hidden');
     if (!aiPanel.classList.contains('hidden') && reader.novel) {
       // コンテキストを更新
-      GeminiAI.setNovelContext(reader.novel, reader.currentChapter, reader.loadedChapters);
+      ChatGPTAI.setNovelContext(reader.novel, reader.currentChapter, reader.loadedChapters);
     }
   });
 
@@ -373,17 +373,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   saveApiKey.addEventListener('click', () => {
-    const key = geminiKeyInput.value.trim();
+    const key = openaiKeyInput.value.trim();
     if (key && key !== '••••••••') {
-      GeminiAI.setApiKey(key);
-      geminiKeyInput.value = '••••••••';
+      ChatGPTAI.setApiKey(key);
+      openaiKeyInput.value = '••••••••';
       alert('APIキーを保存しました');
     }
   });
 
   clearApiKey.addEventListener('click', () => {
-    GeminiAI.setApiKey(null);
-    geminiKeyInput.value = '';
+    ChatGPTAI.setApiKey(null);
+    openaiKeyInput.value = '';
     alert('APIキーを消去しました');
   });
 
@@ -396,7 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     aiMessages.scrollTop = aiMessages.scrollHeight;
     aiInput.value = '';
 
-    const result = await GeminiAI.chat(message);
+    const result = await ChatGPTAI.chat(message);
     
     // ローディング削除
     const loading = aiMessages.querySelector('.loading');
