@@ -20,6 +20,7 @@
         <button id="load-btn" class="icon-btn">読込</button>
       </div>
       <div class="header-right">
+        <button id="ai-btn" class="icon-btn" title="AIアシスタント">🤖</button>
         <button id="login-btn" class="icon-btn" title="ログイン">👤</button>
         <button id="reading-mode-btn" class="icon-btn">横</button>
         <button id="theme-btn" class="icon-btn">☀️</button>
@@ -124,7 +125,40 @@
             <option value="'Noto Sans JP', sans-serif">ゴシック体</option>
           </select>
         </div>
+        <div class="setting-item">
+          <label>Gemini APIキー</label>
+          <div class="api-key-input">
+            <input type="password" id="gemini-key" placeholder="APIキーを入力">
+            <button id="save-api-key" class="icon-btn">保存</button>
+            <button id="clear-api-key" class="icon-btn">消去</button>
+          </div>
+        </div>
         <button id="close-settings" class="btn">閉じる</button>
+      </div>
+    </div>
+
+    <!-- AIパネル -->
+    <div id="ai-panel" class="hidden">
+      <div class="ai-header">
+        <span>🤖 AI アシスタント</span>
+        <button id="close-ai" class="icon-btn">✕</button>
+      </div>
+      <div id="ai-key-input">
+        <p>Gemini APIキーを設定してください</p>
+        <button id="open-settings-for-ai" class="btn">設定を開く</button>
+      </div>
+      <div id="ai-chat" class="hidden">
+        <div id="ai-messages"></div>
+        <div class="ai-input-area">
+          <input type="text" id="ai-input" placeholder="質問を入力...">
+          <button id="ai-send" class="icon-btn">送信</button>
+        </div>
+        <div class="ai-quick-actions">
+          <button class="quick-btn" data-prompt="この章を要約して">要約</button>
+          <button class="quick-btn" data-prompt="登場人物を教えて">人物</button>
+          <button class="quick-btn" data-prompt="この後の展開を予想して">予想</button>
+          <button class="quick-btn" data-prompt="難しい言葉を解説して">解説</button>
+        </div>
       </div>
     </div>
 
@@ -141,6 +175,7 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/sync.js"></script>
   <script src="js/settings.js"></script>
+  <script src="js/gemini.js"></script>
   <script src="js/reader.js"></script>
   <script src="js/app.js"></script>
 </body>

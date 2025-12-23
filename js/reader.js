@@ -5,6 +5,7 @@ class NovelReader {
     this.pages = [];
     this.currentSpread = 0;
     this.chapterData = null;
+    this.loadedChapters = {}; // AIコンテキスト用
     this.settings = Settings.get();
     this.isMobile = window.innerWidth <= 768;
     this.totalChars = 0;
@@ -278,6 +279,12 @@ class NovelReader {
       }
       
       this.chapterData = chapterData;
+      
+      // AIコンテキスト用に保存
+      this.loadedChapters[index] = {
+        title: chapterData.title,
+        content: chapterData.content.join('\n')
+      };
       
       // 文字数を記録
       if (!this.chapterChars[index]) {

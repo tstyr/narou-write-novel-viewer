@@ -321,4 +321,88 @@ document.addEventListener('DOMContentLoaded', () => {
       CloudSync.pushToCloud();
     }
   }, 5 * 60 * 1000);
+
+  // AIパネル
+  const aiBtn = document.getElementById('ai-btn');
+  const aiPanel = document.getElementById('ai-panel');
+  const closeAi = document.getElementById('close-ai');
+  const aiInput = document.getElementById('ai-input');
+  const aiSend = document.getElementById('ai-send');
+  const aiMessages = document.getElementById('ai-messages');
+  const geminiKeyInput = document.getElementById('gemini-key');
+  const saveApiKey = document.getElementById('save-api-key');
+  const clearApiKey = document.getElementById('clear-api-key');
+  const openSettingsForAi = document.getElementById('open-settings-for-ai');
+
+  // APIキー表示
+  if (GeminiAI.apiKey) {
+    geminiKeyInput.value = '••••••••';
+  }
+
+  aiBtn.addEventListener('click', () => {
+    aiPanel.classList.toggle('hidden');
+    if (!aiPanel.classList.contains('hidden') && reader.novel) {
+      // コンテキストを更新
+      GeminiAI.setNovelContext(reader.novel, reader.currentChapter, reader.loadedChapters);
+    }
+  });
+
+  closeAi.addEventListener('click', () => {
+    aiPanel.classList.add('hidden');
+  });
+
+  openSettingsForAi.addEventListener('click', () => {
+    settingsPanel.classList.add('visible');
+    overlay.classList.remove('hidden');
+  });
+
+  saveApiKey.addEventListener('click', () => {
+    const key = geminiKeyInput.value.trim();
+    if (key && key !== '••••••••') {
+      GeminiAI.setApiKey(key);
+      geminiKeyInput.value = '••••••••';
+      alert('APIキーを保存しました');
+    }
+  });
+
+  clearApiKey.addEventListener('click', () => {
+    GeminiAI.setApiKey(null);
+    geminiKeyInput.value = '';
+    alert('APIキーを消去しました');
+  });
+
+  async function sendAiMessage(message) {
+    if (!message.trim()) return;
+    
+    // ユーザーメッセージ表示
+    aiMessages.innerHTML += `<div class="ai-message user">${escapeHtml(message)}</div>`;
+    aiMessages.innerHTML += `<div class="ai-message assistant loading">考え中...</div>`;
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+    aiInput.value = '';
+
+    const result = await GeminiAI.chat(message);
+    
+    // ローディング削除
+    const loading = aiMessages.querySelector('.loading');
+    if (loading) loading.remove();
+
+    if (result.error) {
+      aiMessages.innerHTML += `<div class="ai-message error">${escapeHtml(result.error)}</div>`;
+    } else {
+      aiMessages.innerHTML += `<div class="ai-message assistant">${escapeHtml(result.reply)}</div>`;
+    }
+    aiMessages.scrollTop = aiMessages.scrollHeight;
+  }
+
+  aiSend.addEventListener('click', () => sendAiMessage(aiInput.value));
+  aiInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') sendAiMessage(aiInput.value);
+  });
+
+  // クイックアクション
+  document.querySelectorAll('.quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      sendAiMessage(btn.dataset.prompt);
+    });
+  });
 });
