@@ -298,18 +298,12 @@ class NovelReader {
       
       this.chapterData = chapterData;
       
-      // AIコンテキスト用に保存
-      this.loadedChapters[index] = {
-        title: chapterData.title,
-        content: chapterData.content.join('\n')
-      };
-      
       // 文字数を記録
       if (!this.chapterChars[index]) {
         this.chapterChars[index] = chapterData.content.join('').length;
       }
       
-      this.paginate();
+      await this.paginate();
       
       // startPageから見開きを計算
       if (this.isMobile) {
@@ -331,69 +325,40 @@ class NovelReader {
     }
   }
 
-  paginate() {
+  async paginate() {
     this.pages = [];
     if (!this.chapterData) return;
 
     const isVertical = this.settings.readingMode === 'vertical';
-    const showRuby = this.settings.showRuby !== false; // デフォルトtrue
-    const autoRuby = this.settings.autoRuby === true; // デフォルトfalse
+    const showRuby = this.settings.showRuby !== false;
+    const autoRuby = this.settings.autoRuby === true;
     
-    // ページサイズを取得（1ページ分）
     const pageEl = document.getElementById('page-left');
-    const pageWidth = pageEl.clientWidth - 48; // padding分を引く
+    const pageWidth = pageEl.clientWidth - 48;
     const pageHeight = pageEl.clientHeight - 48;
     
-    // 全コンテンツ（ルビ処理を適用）
-    const processText = (text) => {
+    // 全コンテンツを処理
+    const allContent = [];
+    allContent.push(`<h2 class="chapter-title">${this.escapeHtml(this.chapterData.title)}</h2>`);
+    
+    for (const p of this.chapterData.content) {
+      let processedText;
+      
       if (!showRuby) {
-        // ルビ非表示時は本文のみ残す
-        return this.escapeHtml(text).replace(/[|]?[^《》]*《[^》]+》/g, (m) => {
+        // ルビ非表示
+        processedText = this.escapeHtml(p).replace(/[|]?[^《》]*《[^》]+》/g, (m) => {
           return m.replace(/\|?([^《》]*)《[^》]+》/, '$1');
         });
+      } else if (autoRuby && this.kuroshiroReady) {
+        // 自動ルビ有効
+        processedText = await this.processAutoRuby(p);
+      } else {
+        // 既存のルビのみ
+        processedText = this.processRuby(p);
       }
       
-      // 既存のルビを処理
-      let html = this.processRuby(text);
-      
-      // 自動ルビが有効な場合、残りの漢字にもルビを振る
-      if (autoRuby && this.kuroshiroReady) {
-        // 既にrubyタグがある部分を保護
-        const rubyPlaceholders = [];
-        html = html.replace(/<ruby>.*?<\/ruby>/g, (match) => {
-          const index = rubyPlaceholders.length;
-          rubyPlaceholders.push(match);
-          return `__RUBY_${index}__`;
-        });
-        
-        // プレーンテキストを抽出
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-        const plainText = tempDiv.textContent;
-        
-        // 自動ルビ変換（同期的に処理するため、後で非同期版に変更予定）
-        // ここでは簡易版として漢字のみ検出
-        html = html.replace(/([一-龯々]+)/g, (match) => {
-          // 既にrubyタグ内でない場合のみ
-          if (!match.includes('__RUBY_')) {
-            return `<ruby>${match}<rp>(</rp><rt></rt><rp>)</rp></ruby>`;
-          }
-          return match;
-        });
-        
-        // プレースホルダーを元に戻す
-        rubyPlaceholders.forEach((ruby, index) => {
-          html = html.replace(`__RUBY_${index}__`, ruby);
-        });
-      }
-      
-      return html;
-    };
-    
-    const allContent = [
-      `<h2 class="chapter-title">${this.escapeHtml(this.chapterData.title)}</h2>`,
-      ...this.chapterData.content.map(p => `<p>${processText(p)}</p>`)
-    ];
+      allContent.push(`<p>${processedText}</p>`);
+    }
     
     // テスト用div
     let testDiv = document.createElement('div');
@@ -577,50 +542,50 @@ class NovelReader {
     }
   }
 
-  setReadingMode(mode) {
+  async setReadingMode(mode) {
     this.settings.readingMode = mode;
     Settings.update('readingMode', mode);
     this.elements.book.classList.remove('vertical-mode', 'horizontal-mode');
     this.elements.book.classList.add(`${mode}-mode`);
     
     if (this.chapterData) {
-      this.paginate();
+      await this.paginate();
       this.currentSpread = 0;
       this.renderSpread();
     }
   }
 
-  setFontSize(size) {
+  async setFontSize(size) {
     this.settings.fontSize = size;
     Settings.update('fontSize', size);
     document.querySelectorAll('.page-content').forEach(el => el.style.fontSize = `${size}px`);
     
     if (this.chapterData) {
-      this.paginate();
+      await this.paginate();
       this.currentSpread = 0;
       this.renderSpread();
     }
   }
 
-  setLineHeight(height) {
+  async setLineHeight(height) {
     this.settings.lineHeight = height;
     Settings.update('lineHeight', height);
     document.querySelectorAll('.page-content').forEach(el => el.style.lineHeight = height);
     
     if (this.chapterData) {
-      this.paginate();
+      await this.paginate();
       this.currentSpread = 0;
       this.renderSpread();
     }
   }
 
-  setFontFamily(family) {
+  async setFontFamily(family) {
     this.settings.fontFamily = family;
     Settings.update('fontFamily', family);
     document.querySelectorAll('.page-content').forEach(el => el.style.fontFamily = family);
     
     if (this.chapterData) {
-      this.paginate();
+      await this.paginate();
       this.currentSpread = 0;
       this.renderSpread();
     }
@@ -653,7 +618,7 @@ class NovelReader {
     }
   }
 
-  onResize() {
+  async onResize() {
     const wasMobile = this.isMobile;
     this.isMobile = window.innerWidth <= 768;
     
@@ -661,7 +626,7 @@ class NovelReader {
       // 現在のページ位置を保持
       const currentPageIndex = wasMobile ? this.currentSpread : this.currentSpread * 2;
       
-      this.paginate();
+      await this.paginate();
       
       // 新しいモードでの見開きを計算
       if (this.isMobile) {
@@ -700,26 +665,61 @@ class NovelReader {
   }
 
   // ルビ表示/非表示を切り替え
-  setRubyVisible(visible) {
+  async setRubyVisible(visible) {
     this.settings.showRuby = visible;
     Settings.update('showRuby', visible);
     
     if (this.chapterData) {
-      this.paginate();
+      await this.paginate();
       this.currentSpread = 0;
       this.renderSpread();
     }
   }
 
   // 自動ルビ表示/非表示を切り替え
-  setAutoRuby(enabled) {
+  async setAutoRuby(enabled) {
     this.settings.autoRuby = enabled;
     Settings.update('autoRuby', enabled);
     
     if (this.chapterData) {
-      this.paginate();
+      await this.paginate();
       this.currentSpread = 0;
       this.renderSpread();
+    }
+  }
+
+  // テキストに自動でルビを振る
+  async processAutoRuby(text) {
+    if (!this.kuroshiroReady || !this.kuroshiro) {
+      return this.processRuby(text);
+    }
+    
+    try {
+      // まず既存のルビ記法を保護
+      const rubyPatterns = [];
+      let protectedText = text.replace(/\|?([^|《》]+)《([^》]+)》/g, (match, base, ruby) => {
+        const index = rubyPatterns.length;
+        rubyPatterns.push({ base, ruby });
+        return `__PROTECTED_${index}__`;
+      });
+      
+      // Kuroshiroで変換
+      const converted = await this.kuroshiro.convert(protectedText, {
+        to: 'hiragana',
+        mode: 'furigana'
+      });
+      
+      // 保護したルビを復元
+      let result = converted;
+      rubyPatterns.forEach((pattern, index) => {
+        result = result.replace(`__PROTECTED_${index}__`, 
+          `<ruby>${this.escapeHtml(pattern.base)}<rp>(</rp><rt>${this.escapeHtml(pattern.ruby)}</rt><rp>)</rp></ruby>`);
+      });
+      
+      return result;
+    } catch (e) {
+      console.error('自動ルビ変換エラー:', e);
+      return this.processRuby(text);
     }
   }
 
