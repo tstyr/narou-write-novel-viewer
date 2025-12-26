@@ -127,13 +127,21 @@
         <div class="setting-item">
           <label>ルビ（読み仮名）</label>
           <div class="toggle-controls">
-            <button id="ruby-toggle" class="toggle-btn active">表示</button>
+            <label class="switch">
+              <input type="checkbox" id="ruby-toggle" checked>
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label" id="ruby-label">ON</span>
           </div>
         </div>
         <div class="setting-item">
           <label>自動ルビ</label>
           <div class="toggle-controls">
-            <button id="auto-ruby-toggle" class="toggle-btn">有効</button>
+            <label class="switch">
+              <input type="checkbox" id="auto-ruby-toggle">
+              <span class="slider"></span>
+            </label>
+            <span class="toggle-label" id="auto-ruby-label">OFF</span>
           </div>
           <small>全ての漢字に読み仮名を自動付与</small>
         </div>

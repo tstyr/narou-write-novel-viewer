@@ -47,7 +47,10 @@ class NovelReader {
   async initKuroshiro() {
     try {
       this.kuroshiro = new Kuroshiro();
-      await this.kuroshiro.init(new KuromojiAnalyzer());
+      // 辞書パスを指定して初期化
+      await this.kuroshiro.init(new KuromojiAnalyzer({
+        dictPath: 'https://cdn.jsdelivr.net/npm/kuromoji@0.1.2/dict'
+      }));
       this.kuroshiroReady = true;
       console.log('Kuroshiro初期化完了');
     } catch (e) {

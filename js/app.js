@@ -34,7 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // ルビ設定の初期化
   const rubyToggle = document.getElementById('ruby-toggle');
-  updateRubyToggle(settings.showRuby !== false);
+  const rubyLabel = document.getElementById('ruby-label');
+  rubyToggle.checked = settings.showRuby !== false;
+  rubyLabel.textContent = rubyToggle.checked ? 'ON' : 'OFF';
   
   // 初期履歴表示
   renderHistory();
@@ -191,16 +193,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ルビ表示切り替え
-  rubyToggle.addEventListener('click', () => {
-    const newValue = reader.settings.showRuby === false;
-    reader.setRubyVisible(newValue);
-    updateRubyToggle(newValue);
+  rubyToggle.addEventListener('change', () => {
+    reader.setRubyVisible(rubyToggle.checked);
+    rubyLabel.textContent = rubyToggle.checked ? 'ON' : 'OFF';
   });
-
-  function updateRubyToggle(visible) {
-    rubyToggle.textContent = visible ? '表示' : '非表示';
-    rubyToggle.classList.toggle('active', visible);
-  }
 
   // タップでページめくり
   tapPrev.addEventListener('click', () => {
@@ -340,10 +336,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 自動ルビトグル
   const autoRubyToggle = document.getElementById('auto-ruby-toggle');
-  autoRubyToggle.classList.toggle('active', reader.settings.autoRuby === true);
-  autoRubyToggle.addEventListener('click', () => {
-    const enabled = !autoRubyToggle.classList.contains('active');
-    autoRubyToggle.classList.toggle('active', enabled);
-    reader.setAutoRuby(enabled);
+  const autoRubyLabel = document.getElementById('auto-ruby-label');
+  autoRubyToggle.checked = reader.settings.autoRuby === true;
+  autoRubyLabel.textContent = autoRubyToggle.checked ? 'ON' : 'OFF';
+  
+  autoRubyToggle.addEventListener('change', () => {
+    reader.setAutoRuby(autoRubyToggle.checked);
+    autoRubyLabel.textContent = autoRubyToggle.checked ? 'ON' : 'OFF';
   });
 });
