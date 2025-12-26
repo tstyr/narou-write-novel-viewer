@@ -21,6 +21,10 @@ class NovelReader {
     this.pageTurnIntervals = [];
     this.currentPageChars = 0;
     
+    // 読書統計用
+    this.chapterStartTime = null;
+    this.chapterReadChars = 0;
+    
     this.elements = {
       book: document.getElementById('book'),
       contentLeft: document.getElementById('content-left'),
@@ -104,6 +108,31 @@ class NovelReader {
     
     this.settings.readingSpeed = clampedSpeed;
     Settings.update('readingSpeed', clampedSpeed);
+  }
+
+  // 章の読書統計を保存
+  saveChapterStats() {
+    if (!this.novel || !this.chapterStartTime) return;
+    
+    const duration = (Date.now() - this.chapterStartTime) / 1000; // 秒
+    
+    // 5秒未満は記録しない
+    if (duration < 5) return;
+    
+    const charCount = this.chapterChars[this.currentChapter] || 0;
+    const chapterTitle = this.novel.chapters[this.currentChapter]?.title || '';
+    
+    // ReadingStatsが存在する場合のみ記録
+    if (typeof ReadingStats !== 'undefined') {
+      ReadingStats.recordSession(
+        this.novel.id,
+        this.novel.title,
+        this.currentChapter,
+        chapterTitle,
+        duration,
+        charCount
+      );
+    }
   }
 
   // 現在表示中のページの文字数を計算
@@ -285,9 +314,16 @@ class NovelReader {
   async goToChapter(index, startPage = 0) {
     if (!this.novel || index < 0 || index >= this.novel.chapters.length) return;
     
+    // 前の章の読書統計を記録
+    this.saveChapterStats();
+    
     this.showLoading();
     this.currentChapter = index;
     const chapter = this.novel.chapters[index];
+    
+    // 新しい章の開始時間を記録
+    this.chapterStartTime = Date.now();
+    this.chapterReadChars = 0;
     
     try {
       // まずオフラインデータを確認

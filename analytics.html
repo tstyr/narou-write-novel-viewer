@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>読書統計 - Novel Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #f5f7fa;
+      --card-bg: #fff;
+      --text: #333;
+      --text-sub: #666;
+      --accent: #4a90a4;
+      --border: #e0e0e0;
+    }
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .header {
+      background: var(--card-bg);
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .header h1 { font-size: 1.2rem; }
+    .back-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.85rem;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    .summary-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .card-label {
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      margin-bottom: 0.3rem;
+    }
+    .card-value {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--accent);
+    }
+    .card-unit {
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+    .chart-section {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .chart-title {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .chart-container {
+      position: relative;
+      height: 250px;
+    }
+    .novel-list {
+      background: var(--card-bg);
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .novel-list-header {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: bold;
+    }
+    .novel-item {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .novel-item:hover { background: #f8f9fa; }
+    .novel-item:last-child { border-bottom: none; }
+    .novel-title { font-weight: bold; margin-bottom: 0.3rem; }
+    .novel-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.8rem;
+      color: var(--text-sub);
+    }
+    /* モーダル */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal.active { display: flex; }
+    .modal-content {
+      background: var(--card-bg);
+      border-radius: 12px;
+      width: 90%;
+      max-width: 700px;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .modal-header {
+      padding: 1rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: var(--card-bg);
+    }
+    .modal-header h2 { font-size: 1.1rem; }
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-sub);
+    }
+    .modal-body { padding: 1rem 1.2rem; }
+    .chapter-item {
+      padding: 0.8rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .chapter-item:last-child { border-bottom: none; }
+    .chapter-name { font-weight: bold; font-size: 0.9rem; }
+    .chapter-stats {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-sub);
+      margin-top: 0.3rem;
+    }
+    .no-data {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-sub);
+    }
+    @media (max-width: 600px) {
+      .summary-cards { grid-template-columns: repeat(2, 1fr); }
+      .card-value { font-size: 1.2rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>📊 読書統計</h1>
+    <a href="index.html" class="back-btn">← 戻る</a>
+  </div>
+
+  <div class="container">
+    <div class="summary-cards" id="summary-cards"></div>
+
+    <div class="chart-section">
+      <div class="chart-title">📈 日別読書時間（過去30日）</div>
+      <div class="chart-container">
+        <canvas id="timeChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-section">
+      <div class="chart-title">📖 日別読書文字数（過去30日）</div>
+      <div class="chart-container">
+        <canvas id="charsChart"></canvas>
+      </div>
+    </div>
+
+    <div class="novel-list">
+      <div class="novel-list-header">📚 作品別統計</div>
+      <div id="novel-list-body"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="novel-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-title">作品詳細</h2>
+        <button class="close-btn" id="close-modal">×</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="js/analytics.js"></script>
+  <script>
+    // 時間フォーマット
+    function formatTime(seconds) {
+      if (seconds < 60) return `${Math.round(seconds)}秒`;
+      if (seconds < 3600) return `${Math.round(seconds / 60)}分`;
+      const h = Math.floor(seconds / 3600);
+      const m = Math.round((seconds % 3600) / 60);
+      return `${h}時間${m}分`;
+    }
+
+    function formatDate(timestamp) {
+      const d = new Date(timestamp);
+      return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+
+    // サマリーカード表示
+    function renderSummary() {
+      const summary = ReadingStats.getSummary();
+      const container = document.getElementById('summary-cards');
+      
+      const cards = [
+        { label: '総読書時間', value: formatTime(summary.totalTime), icon: '⏱️' },
+        { label: '総読書文字数', value: summary.totalChars.toLocaleString(), unit: '文字', icon: '📝' },
+        { label: '読んだ作品数', value: summary.novelCount, unit: '作品', icon: '📚' },
+        { label: '平均セッション', value: formatTime(summary.avgTimePerSession), icon: '📊' },
+        { label: '平均読書速度', value: Math.round(summary.avgCharsPerMin), unit: '文字/分', icon: '⚡' },
+        { label: 'セッション数', value: summary.totalSessions, unit: '回', icon: '🔢' }
+      ];
+
+      container.innerHTML = cards.map(c => `
+        <div class="card">
+          <div class="card-label">${c.icon} ${c.label}</div>
+          <div class="card-value">${c.value}</div>
+          ${c.unit ? `<div class="card-unit">${c.unit}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // グラフ描画
+    function renderCharts() {
+      const dailyData = ReadingStats.getDailyData(30);
+      const labels = dailyData.map(d => d.label);
+
+      // 読書時間グラフ
+      new Chart(document.getElementById('timeChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: '読書時間（分）',
+            data: dailyData.map(d => Math.round(d.totalTime / 60)),
+            borderColor: '#4a90a4',
+            backgroundColor: 'rgba(74, 144, 164, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: '分' } }
+          }
+        }
+      });
+
+      // 文字数グラフ
+      new Chart(document.getElementById('charsChart'), {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: '読書文字数',
+            data: dailyData.map(d => d.totalChars),
+            backgroundColor: 'rgba(74, 144, 164, 0.7)',
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, title: { display: true, text: '文字' } }
+          }
+        }
+      });
+    }
+
+    // 作品リスト表示
+    function renderNovelList() {
+      const novels = ReadingStats.getNovelStats();
+      const container = document.getElementById('novel-list-body');
+
+      if (novels.length === 0) {
+        container.innerHTML = '<div class="no-data">まだ読書データがありません</div>';
+        return;
+      }
+
+      container.innerHTML = novels.map(n => `
+        <div class="novel-item" data-id="${n.id}">
+          <div class="novel-title">${n.title}</div>
+          <div class="novel-meta">
+            <span>⏱️ ${formatTime(n.totalTime)}</span>
+            <span>📝 ${n.totalChars.toLocaleString()}文字</span>
+            <span>📖 ${Object.keys(n.chapters).length}話</span>
+          </div>
+        </div>
+      `).join('');
+
+      // クリックイベント
+      container.querySelectorAll('.novel-item').forEach(el => {
+        el.addEventListener('click', () => showNovelDetail(el.dataset.id));
+      });
+    }
+
+    // 作品詳細モーダル
+    function showNovelDetail(novelId) {
+      const novels = ReadingStats.getNovelStats();
+      const novel = novels.find(n => n.id === novelId);
+      if (!novel) return;
+
+      const chapters = ReadingStats.getChapterStats(novelId);
+      
+      document.getElementById('modal-title').textContent = novel.title;
+      
+      const body = document.getElementById('modal-body');
+      body.innerHTML = `
+        <div class="card" style="margin-bottom:1rem;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;text-align:center;">
+            <div>
+              <div class="card-label">総読書時間</div>
+              <div class="card-value" style="font-size:1.2rem;">${formatTime(novel.totalTime)}</div>
+            </div>
+            <div>
+              <div class="card-label">総文字数</div>
+              <div class="card-value" style="font-size:1.2rem;">${novel.totalChars.toLocaleString()}</div>
+            </div>
+            <div>
+              <div class="card-label">読んだ話数</div>
+              <div class="card-value" style="font-size:1.2rem;">${chapters.length}</div>
+            </div>
+          </div>
+        </div>
+        <h3 style="font-size:0.9rem;margin-bottom:0.5rem;">📖 章別統計</h3>
+        ${chapters.length === 0 ? '<div class="no-data">データなし</div>' : 
+          chapters.map(c => `
+            <div class="chapter-item">
+              <div class="chapter-name">第${c.chapterIndex + 1}話: ${c.title || '(タイトルなし)'}</div>
+              <div class="chapter-stats">
+                <span>⏱️ ${formatTime(c.totalTime)}</span>
+                <span>📝 ${c.charCount.toLocaleString()}文字</span>
+                <span>🔄 ${c.readCount}回</span>
+                <span>📅 ${formatDate(c.lastRead)}</span>
+              </div>
+            </div>
+          `).join('')
+        }
+      `;
+
+      document.getElementById('novel-modal').classList.add('active');
+    }
+
+    // モーダル閉じる
+    document.getElementById('close-modal').addEventListener('click', () => {
+      document.getElementById('novel-modal').classList.remove('active');
+    });
+    document.getElementById('novel-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'novel-modal') {
+        document.getElementById('novel-modal').classList.remove('active');
+      }
+    });
+
+    // 初期化
+    renderSummary();
+    renderCharts();
+    renderNovelList();
+  </script>
+</body>
+</html>

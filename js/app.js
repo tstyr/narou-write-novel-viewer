@@ -320,8 +320,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // ページ離脱時に同期
+  // ページ離脱時に同期と統計保存
   window.addEventListener('beforeunload', () => {
+    reader.saveChapterStats();
     if (CloudSync.user) {
       CloudSync.pushToCloud();
     }
