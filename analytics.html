@@ -16,6 +16,7 @@
       --text-sub: #666;
       --accent: #4a90a4;
       --border: #e0e0e0;
+      --success: #27ae60;
     }
     body {
       font-family: 'Noto Sans JP', sans-serif;
@@ -30,9 +31,12 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
     }
     .header h1 { font-size: 1.2rem; }
-    .back-btn {
+    .header-right { display: flex; gap: 0.5rem; align-items: center; }
+    .back-btn, .sync-btn {
       background: var(--accent);
       color: #fff;
       border: none;
@@ -42,35 +46,58 @@
       text-decoration: none;
       font-size: 0.85rem;
     }
+    .sync-btn { background: var(--success); }
+    .sync-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+    .sync-status { font-size: 0.75rem; color: var(--text-sub); }
     .container {
       max-width: 1200px;
       margin: 0 auto;
       padding: 1rem;
     }
+    .period-tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .period-tab {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--card-bg);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+    .period-tab.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
     .summary-cards {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
       gap: 1rem;
       margin-bottom: 1.5rem;
     }
     .card {
       background: var(--card-bg);
       border-radius: 12px;
-      padding: 1.2rem;
+      padding: 1rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
     .card-label {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: var(--text-sub);
-      margin-bottom: 0.3rem;
+      margin-bottom: 0.2rem;
     }
     .card-value {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: bold;
       color: var(--accent);
     }
     .card-unit {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--text-sub);
     }
     .chart-section {
@@ -80,15 +107,18 @@
       margin-bottom: 1.5rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     }
-    .chart-title {
-      font-size: 1rem;
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 1rem;
       padding-bottom: 0.5rem;
       border-bottom: 1px solid var(--border);
     }
+    .chart-title { font-size: 1rem; }
     .chart-container {
       position: relative;
-      height: 250px;
+      height: 280px;
     }
     .novel-list {
       background: var(--card-bg);
@@ -115,8 +145,8 @@
       gap: 1rem;
       font-size: 0.8rem;
       color: var(--text-sub);
+      flex-wrap: wrap;
     }
-    /* モーダル */
     .modal {
       display: none;
       position: fixed;
@@ -163,40 +193,87 @@
     .chapter-name { font-weight: bold; font-size: 0.9rem; }
     .chapter-stats {
       display: flex;
-      gap: 1rem;
+      gap: 0.8rem;
       font-size: 0.75rem;
       color: var(--text-sub);
       margin-top: 0.3rem;
+      flex-wrap: wrap;
     }
     .no-data {
       text-align: center;
       padding: 3rem;
       color: var(--text-sub);
     }
+    .login-prompt {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      margin-bottom: 1rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .login-prompt p { margin-bottom: 1rem; color: var(--text-sub); }
+    .google-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.2rem;
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .google-btn:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     @media (max-width: 600px) {
       .summary-cards { grid-template-columns: repeat(2, 1fr); }
-      .card-value { font-size: 1.2rem; }
+      .card-value { font-size: 1.1rem; }
+      .chart-container { height: 220px; }
     }
   </style>
 </head>
 <body>
   <div class="header">
     <h1>📊 読書統計</h1>
-    <a href="index.html" class="back-btn">← 戻る</a>
+    <div class="header-right">
+      <span class="sync-status" id="sync-status"></span>
+      <button class="sync-btn" id="sync-btn" style="display:none;">🔄 同期</button>
+      <a href="index.html" class="back-btn">← 戻る</a>
+    </div>
   </div>
 
   <div class="container">
+    <div id="login-prompt" class="login-prompt" style="display:none;">
+      <p>ログインすると統計データをクラウドに同期できます</p>
+      <button class="google-btn" id="login-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Googleでログイン
+      </button>
+    </div>
+
+    <div class="period-tabs">
+      <button class="period-tab" data-period="today">今日</button>
+      <button class="period-tab" data-period="week">過去7日</button>
+      <button class="period-tab active" data-period="month">過去30日</button>
+      <button class="period-tab" data-period="year">年間</button>
+      <button class="period-tab" data-period="all">全期間</button>
+    </div>
+
     <div class="summary-cards" id="summary-cards"></div>
 
     <div class="chart-section">
-      <div class="chart-title">📈 日別読書時間（過去30日）</div>
+      <div class="chart-header">
+        <span class="chart-title">📈 読書時間</span>
+      </div>
       <div class="chart-container">
         <canvas id="timeChart"></canvas>
       </div>
     </div>
 
     <div class="chart-section">
-      <div class="chart-title">📖 日別読書文字数（過去30日）</div>
+      <div class="chart-header">
+        <span class="chart-title">📖 読書文字数</span>
+      </div>
       <div class="chart-container">
         <canvas id="charsChart"></canvas>
       </div>
@@ -218,10 +295,20 @@
     </div>
   </div>
 
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
   <script src="js/analytics.js"></script>
   <script>
+    let currentPeriod = 'month';
+    let timeChart = null;
+    let charsChart = null;
+    let currentUser = null;
+
     // 時間フォーマット
     function formatTime(seconds) {
+      if (!seconds || seconds < 0) return '0秒';
       if (seconds < 60) return `${Math.round(seconds)}秒`;
       if (seconds < 3600) return `${Math.round(seconds / 60)}分`;
       const h = Math.floor(seconds / 3600);
@@ -234,18 +321,31 @@
       return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,'0')}`;
     }
 
+    // 期間に応じた日数を取得
+    function getPeriodDays(period) {
+      switch(period) {
+        case 'today': return 1;
+        case 'week': return 7;
+        case 'month': return 30;
+        case 'year': return 365;
+        case 'all': return 9999;
+        default: return 30;
+      }
+    }
+
     // サマリーカード表示
     function renderSummary() {
-      const summary = ReadingStats.getSummary();
+      const days = getPeriodDays(currentPeriod);
+      const summary = ReadingStats.getSummaryForPeriod(days);
       const container = document.getElementById('summary-cards');
       
       const cards = [
-        { label: '総読書時間', value: formatTime(summary.totalTime), icon: '⏱️' },
-        { label: '総読書文字数', value: summary.totalChars.toLocaleString(), unit: '文字', icon: '📝' },
-        { label: '読んだ作品数', value: summary.novelCount, unit: '作品', icon: '📚' },
-        { label: '平均セッション', value: formatTime(summary.avgTimePerSession), icon: '📊' },
-        { label: '平均読書速度', value: Math.round(summary.avgCharsPerMin), unit: '文字/分', icon: '⚡' },
-        { label: 'セッション数', value: summary.totalSessions, unit: '回', icon: '🔢' }
+        { label: '読書時間', value: formatTime(summary.totalTime), icon: '⏱️' },
+        { label: '読書文字数', value: summary.totalChars.toLocaleString(), unit: '文字', icon: '📝' },
+        { label: '読んだ作品', value: summary.novelCount, unit: '作品', icon: '📚' },
+        { label: '平均/日', value: formatTime(summary.avgTimePerDay), icon: '📅' },
+        { label: '読書速度', value: Math.round(summary.avgCharsPerMin || 0), unit: '文字/分', icon: '⚡' },
+        { label: 'セッション', value: summary.totalSessions, unit: '回', icon: '🔢' }
       ];
 
       container.innerHTML = cards.map(c => `
@@ -259,53 +359,101 @@
 
     // グラフ描画
     function renderCharts() {
-      const dailyData = ReadingStats.getDailyData(30);
-      const labels = dailyData.map(d => d.label);
+      const days = getPeriodDays(currentPeriod);
+      const dailyData = ReadingStats.getDailyData(days);
+      
+      // ラベル調整（期間に応じて）
+      let labels, timeData, charsData;
+      
+      if (currentPeriod === 'year' || currentPeriod === 'all') {
+        // 月別に集計
+        const monthlyData = {};
+        dailyData.forEach(d => {
+          const month = d.date.substring(0, 7);
+          if (!monthlyData[month]) {
+            monthlyData[month] = { totalTime: 0, totalChars: 0 };
+          }
+          monthlyData[month].totalTime += d.totalTime;
+          monthlyData[month].totalChars += d.totalChars;
+        });
+        labels = Object.keys(monthlyData).map(m => {
+          const [y, mon] = m.split('-');
+          return `${mon}月`;
+        });
+        timeData = Object.values(monthlyData).map(d => Math.round(d.totalTime / 60));
+        charsData = Object.values(monthlyData).map(d => d.totalChars);
+      } else {
+        labels = dailyData.map(d => d.label);
+        timeData = dailyData.map(d => Math.round(d.totalTime / 60));
+        charsData = dailyData.map(d => d.totalChars);
+      }
+
+      // 既存のチャートを破棄
+      if (timeChart) timeChart.destroy();
+      if (charsChart) charsChart.destroy();
 
       // 読書時間グラフ
-      new Chart(document.getElementById('timeChart'), {
+      timeChart = new Chart(document.getElementById('timeChart'), {
         type: 'line',
         data: {
           labels,
           datasets: [{
             label: '読書時間（分）',
-            data: dailyData.map(d => Math.round(d.totalTime / 60)),
+            data: timeData,
             borderColor: '#4a90a4',
-            backgroundColor: 'rgba(74, 144, 164, 0.1)',
+            backgroundColor: 'rgba(74, 144, 164, 0.15)',
             fill: true,
-            tension: 0.3,
-            pointRadius: 3,
-            pointHoverRadius: 6
+            tension: 0.4,
+            pointRadius: days <= 7 ? 5 : 3,
+            pointHoverRadius: 7,
+            borderWidth: 2
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: { 
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.raw}分`
+              }
+            }
+          },
           scales: {
-            y: { beginAtZero: true, title: { display: true, text: '分' } }
+            y: { beginAtZero: true, title: { display: true, text: '分' } },
+            x: { ticks: { maxRotation: 45 } }
           }
         }
       });
 
       // 文字数グラフ
-      new Chart(document.getElementById('charsChart'), {
+      charsChart = new Chart(document.getElementById('charsChart'), {
         type: 'bar',
         data: {
           labels,
           datasets: [{
             label: '読書文字数',
-            data: dailyData.map(d => d.totalChars),
+            data: charsData,
             backgroundColor: 'rgba(74, 144, 164, 0.7)',
-            borderRadius: 4
+            borderRadius: 6,
+            borderSkipped: false
           }]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          plugins: { 
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.raw.toLocaleString()}文字`
+              }
+            }
+          },
           scales: {
-            y: { beginAtZero: true, title: { display: true, text: '文字' } }
+            y: { beginAtZero: true, title: { display: true, text: '文字' } },
+            x: { ticks: { maxRotation: 45 } }
           }
         }
       });
@@ -332,7 +480,6 @@
         </div>
       `).join('');
 
-      // クリックイベント
       container.querySelectorAll('.novel-item').forEach(el => {
         el.addEventListener('click', () => showNovelDetail(el.dataset.id));
       });
@@ -351,18 +498,18 @@
       const body = document.getElementById('modal-body');
       body.innerHTML = `
         <div class="card" style="margin-bottom:1rem;">
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;text-align:center;">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.5rem;text-align:center;">
             <div>
               <div class="card-label">総読書時間</div>
-              <div class="card-value" style="font-size:1.2rem;">${formatTime(novel.totalTime)}</div>
+              <div class="card-value" style="font-size:1.1rem;">${formatTime(novel.totalTime)}</div>
             </div>
             <div>
               <div class="card-label">総文字数</div>
-              <div class="card-value" style="font-size:1.2rem;">${novel.totalChars.toLocaleString()}</div>
+              <div class="card-value" style="font-size:1.1rem;">${novel.totalChars.toLocaleString()}</div>
             </div>
             <div>
               <div class="card-label">読んだ話数</div>
-              <div class="card-value" style="font-size:1.2rem;">${chapters.length}</div>
+              <div class="card-value" style="font-size:1.1rem;">${chapters.length}</div>
             </div>
           </div>
         </div>
@@ -395,10 +542,110 @@
       }
     });
 
+    // 期間タブ切り替え
+    document.querySelectorAll('.period-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentPeriod = tab.dataset.period;
+        renderSummary();
+        renderCharts();
+      });
+    });
+
+    // Firebase認証
+    firebase.auth().onAuthStateChanged(async (user) => {
+      currentUser = user;
+      const loginPrompt = document.getElementById('login-prompt');
+      const syncBtn = document.getElementById('sync-btn');
+      const syncStatus = document.getElementById('sync-status');
+
+      if (user) {
+        loginPrompt.style.display = 'none';
+        syncBtn.style.display = 'inline-block';
+        syncStatus.textContent = `${user.displayName || user.email}`;
+        
+        // クラウドから統計を取得
+        await syncFromCloud();
+      } else {
+        loginPrompt.style.display = 'block';
+        syncBtn.style.display = 'none';
+        syncStatus.textContent = '';
+      }
+      
+      renderAll();
+    });
+
+    // ログイン
+    document.getElementById('login-btn').addEventListener('click', async () => {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      try {
+        await firebase.auth().signInWithPopup(provider);
+      } catch (e) {
+        console.error('Login error:', e);
+        alert('ログインに失敗しました');
+      }
+    });
+
+    // 同期ボタン
+    document.getElementById('sync-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('sync-btn');
+      btn.disabled = true;
+      btn.textContent = '同期中...';
+      
+      try {
+        await syncToCloud();
+        await syncFromCloud();
+        renderAll();
+        btn.textContent = '✓ 完了';
+        setTimeout(() => { btn.textContent = '🔄 同期'; }, 2000);
+      } catch (e) {
+        console.error('Sync error:', e);
+        btn.textContent = '❌ 失敗';
+        setTimeout(() => { btn.textContent = '🔄 同期'; }, 2000);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // クラウドに保存
+    async function syncToCloud() {
+      if (!currentUser) return;
+      
+      const stats = ReadingStats.getAll();
+      const userDoc = firebase.firestore().collection('users').doc(currentUser.uid);
+      
+      await userDoc.set({
+        readingStats: stats,
+        statsUpdated: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+
+    // クラウドから取得
+    async function syncFromCloud() {
+      if (!currentUser) return;
+      
+      try {
+        const userDoc = await firebase.firestore().collection('users').doc(currentUser.uid).get();
+        if (userDoc.exists) {
+          const cloudStats = userDoc.data().readingStats;
+          if (cloudStats) {
+            ReadingStats.mergeFromCloud(cloudStats);
+          }
+        }
+      } catch (e) {
+        console.error('Sync from cloud error:', e);
+      }
+    }
+
+    function renderAll() {
+      renderSummary();
+      renderCharts();
+      renderNovelList();
+    }
+
     // 初期化
-    renderSummary();
-    renderCharts();
-    renderNovelList();
+    renderAll();
   </script>
 </body>
 </html>

@@ -89,10 +89,14 @@ const CloudSync = {
       const settings = Settings.get();
       const userDoc = this.db.collection('users').doc(this.user.uid);
       
+      // 読書統計も含める
+      const statsData = typeof ReadingStats !== 'undefined' ? ReadingStats.getForSync() : null;
+      
       await userDoc.set({
         progress: settings.progress || {},
         history: settings.history || [],
         readingSpeed: settings.readingSpeed || 500,
+        readingStats: statsData,
         lastUpdated: firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt: Date.now()
       }, { merge: true });
@@ -140,6 +144,11 @@ const CloudSync = {
           
           if (cloudData.readingSpeed) {
             Settings.update('readingSpeed', cloudData.readingSpeed);
+          }
+          
+          // 読書統計をマージ
+          if (cloudData.readingStats && typeof ReadingStats !== 'undefined') {
+            ReadingStats.mergeFromCloud(cloudData.readingStats);
           }
           
           console.log('Pulled from cloud');
